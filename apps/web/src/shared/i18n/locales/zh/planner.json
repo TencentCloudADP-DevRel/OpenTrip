@@ -1,0 +1,60 @@
+{
+  "tabs": {
+    "map": "地图",
+    "schedule": "日程",
+    "budget": "预算"
+  },
+  "days": {
+    "all": "全部日期",
+    "day": "第 {{n}} 天",
+    "groupLabel": "第 {{n}} 天 · {{date}}"
+  },
+  "itinerary": {
+    "count_other": "{{count}} 个地点"
+  },
+  "detail": {
+    "dayTime": "第 {{day}} 天 · {{time}} · {{dur}}",
+    "free": "免费",
+    "perPerson": "{{amount}} / 人",
+    "addedBy": "由 {{name}} 添加",
+    "noVotes": "暂无投票",
+    "wantThis": "{{total}} 人中有 {{count}} 人想去",
+    "vote": "投票",
+    "voted": "已投票 ✓",
+    "commentsWithCount": "评论（{{count}}）",
+    "commentsEmpty": "评论 — 开启讨论",
+    "commentPlaceholder": "添加评论…",
+    "justNow": "刚刚"
+  },
+  "schedule": {
+    "insert": "插入地点",
+    "namePlaceholder": "地点名称",
+    "timePlaceholder": "时间",
+    "add": "添加",
+    "voteCount": "▲ {{count}}"
+  },
+  "budget": {
+    "total": "总计",
+    "perPerson": "人均",
+    "expenses": "花费",
+    "expenseList": "花费清单",
+    "addExpense": "添加花费",
+    "descPlaceholder": "这笔花费用于？",
+    "amountPlaceholder": "金额",
+    "payer": "付款人",
+    "splitBetween": "分摊人",
+    "save": "保存花费",
+    "paidBy": "由 {{name}} 支付 · {{when}} · {{count}} 人分摊",
+    "paidByYou": "你",
+    "each": "每人 {{amount}}",
+    "balances": "结余",
+    "balanceSub": "已付 {{paid}} · 应摊 {{share}}",
+    "you": "{{name}}（你）",
+    "settleUp": "结算",
+    "transfersClear_other": "{{count}} 笔转账即可结清整趟行程",
+    "owes": "应付给"
+  },
+  "members": {
+    "title": "同行者"
+  }
+}

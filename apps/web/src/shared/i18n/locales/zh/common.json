@@ -1,0 +1,23 @@
+{
+  "appName": "Wayfare",
+  "tagline": "一起规划旅行，费用一键分摊。",
+  "language": "语言",
+  "languageName": {
+    "en": "English",
+    "zh": "中文"
+  },
+  "actions": {
+    "back": "返回行程列表",
+    "invite": "邀请",
+    "inviteCopied": "链接已复制 ✓",
+    "signIn": "登录",
+    "signOut": "退出登录",
+    "cancel": "取消",
+    "close": "关闭"
+  },
+  "state": {
+    "loading": "加载中…",
+    "error": "出错了。",
+    "retry": "重试"
+  }
+}

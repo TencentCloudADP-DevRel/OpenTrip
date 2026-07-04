@@ -1,0 +1,62 @@
+{
+  "tabs": {
+    "map": "Map",
+    "schedule": "Schedule",
+    "budget": "Budget"
+  },
+  "days": {
+    "all": "All days",
+    "day": "Day {{n}}",
+    "groupLabel": "Day {{n}} · {{date}}"
+  },
+  "itinerary": {
+    "count_one": "{{count}} stop",
+    "count_other": "{{count}} stops"
+  },
+  "detail": {
+    "dayTime": "Day {{day}} · {{time}} · {{dur}}",
+    "free": "Free",
+    "perPerson": "{{amount}} / person",
+    "addedBy": "Added by {{name}}",
+    "noVotes": "No votes yet",
+    "wantThis": "{{count}} of {{total}} want this",
+    "vote": "Vote",
+    "voted": "Voted ✓",
+    "commentsWithCount": "Comments ({{count}})",
+    "commentsEmpty": "Comments — start the discussion",
+    "commentPlaceholder": "Add a comment…",
+    "justNow": "Just now"
+  },
+  "schedule": {
+    "insert": "Insert stop",
+    "namePlaceholder": "Stop name",
+    "timePlaceholder": "Time",
+    "add": "Add",
+    "voteCount": "▲ {{count}}"
+  },
+  "budget": {
+    "total": "Total",
+    "perPerson": "Per person",
+    "expenses": "Expenses",
+    "expenseList": "Expenses",
+    "addExpense": "Add expense",
+    "descPlaceholder": "What was it for?",
+    "amountPlaceholder": "Amount",
+    "payer": "Paid by",
+    "splitBetween": "Split between",
+    "save": "Save expense",
+    "paidBy": "Paid by {{name}} · {{when}} · split {{count}} ways",
+    "paidByYou": "you",
+    "each": "{{amount}} each",
+    "balances": "Balances",
+    "balanceSub": "paid {{paid}} · share {{share}}",
+    "you": "{{name}} (you)",
+    "settleUp": "Settle up",
+    "transfersClear_one": "{{count}} transfer clears the whole trip",
+    "transfersClear_other": "{{count}} transfers clear the whole trip",
+    "owes": "owes"
+  },
+  "members": {
+    "title": "Travelers"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "appName": "Wayfare",
+  "tagline": "Plan trips together, split everything.",
+  "language": "Language",
+  "languageName": {
+    "en": "English",
+    "zh": "中文"
+  },
+  "actions": {
+    "back": "Back to trips",
+    "invite": "Invite",
+    "inviteCopied": "Link copied ✓",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "cancel": "Cancel",
+    "close": "Close"
+  },
+  "state": {
+    "loading": "Loading…",
+    "error": "Something went wrong.",
+    "retry": "Try again"
+  }
+}

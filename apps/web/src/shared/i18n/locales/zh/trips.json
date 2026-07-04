@@ -1,0 +1,15 @@
+{
+  "title": "我的行程",
+  "subtitle": "共享行程、投票与花费，尽在一处。",
+  "status": {
+    "active": "进行中",
+    "planning": "规划中",
+    "settled": "已结算"
+  },
+  "card": {
+    "dates": "{{start}} – {{end}}",
+    "members_other": "{{count}} 位同行者",
+    "stops_other": "{{count}} 个地点",
+    "open": "打开规划"
+  }
+}

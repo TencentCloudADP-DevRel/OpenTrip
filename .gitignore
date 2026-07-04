@@ -1,0 +1,25 @@
+node_modules/
+dist/
+build/
+.wrangler/
+.turbo/
+coverage/
+
+# env & secrets
+.env
+.env.*
+!.env.example
+.dev.vars
+deploy/**/secrets.json
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# os
+.DS_Store
+
+# generated
+worker-configuration.d.ts
+apps/api/src/infrastructure/cloudflare/worker-configuration.d.ts

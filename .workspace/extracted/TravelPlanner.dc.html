@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/cossui-design-system-2babccc2-8f29-4228-a7f9-4a5b362da524/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/cossui-design-system-2babccc2-8f29-4228-a7f9-4a5b362da524/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/cossui-design-system-2babccc2-8f29-4228-a7f9-4a5b362da524/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/cossui-design-system-2babccc2-8f29-4228-a7f9-4a5b362da524/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/cossui-design-system-2babccc2-8f29-4228-a7f9-4a5b362da524/styles.css">
+  <script src="_ds/cossui-design-system-2babccc2-8f29-4228-a7f9-4a5b362da524/_ds_bundle.js"></script>
+  <style>
+    html, body { margin: 0; height: 100%; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    #root { height: 100%; }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb { background: rgba(40,48,74,.16); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
+    .ins-zone { opacity: 0; transition: opacity .15s ease; }
+    .ins-zone:hover { opacity: 1; }
+  </style>
+</helmet>
+
+<div style="height:100vh;display:flex;flex-direction:column;background:var(--background);color:var(--foreground);font-family:var(--font-sans);font-size:var(--text-base);overflow:hidden">
+
+  <!-- ============================== PLANNER ============================== -->
+  <sc-if value="{{ isPlanner }}" hint-placeholder-val="{{ true }}">
+
+    <div style="flex:1;display:flex;min-height:0;position:relative">
+
+    <!-- Sidebar -->
+    <sc-if value="{{ sideOpen }}" hint-placeholder-val="{{ true }}">
+    <div style="width:396px;flex:none;display:flex;flex-direction:column;min-height:0;background:var(--card);border-right:1px solid var(--border)">
+    <div style="flex:none;display:flex;align-items:center;gap:10px;padding:12px 12px 0">
+      <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Button" variant="ghost" size="icon-sm" onClick="{{ goHome }}" aria-label="Back to trips" hint-size="32px,32px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+      </x-import>
+      <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+        <div style="font-family:var(--font-heading);font-size:var(--text-md);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-tight);white-space:nowrap">Japan — the golden route</div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted-foreground);white-space:nowrap">Oct 12 – 16, 2026 · 5 days · 22 stops</div>
+      </div>
+      <div style="flex:1"></div>
+      <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Button" variant="ghost" size="icon-sm" onClick="{{ toggleSide }}" aria-label="Collapse sidebar" hint-size="32px,32px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"></path></svg>
+      </x-import>
+    </div>
+    <div style="flex:none;display:flex;padding:10px 14px 4px">
+      <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Tabs" tabs="{{ viewTabs }}" value="{{ tab }}" onValueChange="{{ setTab }}" style="width:100%" hint-size="100%,38px"></x-import>
+    </div>
+
+          <!-- Itinerary list -->
+          <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+            <div style="flex:none;padding:14px 16px 10px;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:baseline;gap:8px">
+                <div style="font-family:var(--font-heading);font-size:var(--text-lg);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-tight)">Itinerary</div>
+                <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted-foreground);font-variant-numeric:tabular-nums">{{ visibleCountLabel }}</div>
+              </div>
+              <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:2px">
+                <sc-for list="{{ dayPills }}" as="pill" hint-placeholder-count="6">
+                  <button style="{{ pill.style }}" style-hover="color:var(--foreground)" onClick="{{ pill.select }}">{{ pill.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="flex:1;overflow-y:auto;min-height:0">
+              <sc-for list="{{ listGroups }}" as="grp" hint-placeholder-count="2">
+                <div>
+                  <div style="position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border)" data-comment-anchor="ccb7b22282-div">
+                    <span style="{{ grp.dotStyle }}"></span>
+                    <span style="font-size:var(--text-sm);font-weight:var(--weight-semibold)">{{ grp.label }}</span>
+                    <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted-foreground)">{{ grp.city }}</span>
+                  </div>
+                  <sc-for list="{{ grp.stops }}" as="stop" hint-placeholder-count="4">
+                    <div style="{{ stop.rowStyle }}" style-hover="background:var(--muted)" onClick="{{ stop.select }}">
+                      <span style="{{ stop.numStyle }}">{{ stop.num }}</span>
+                      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                        <div style="font-size:var(--text-base);font-weight:var(--weight-medium);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ stop.name }}</div>
+                        <div style="font-size:var(--text-xs);color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-family:var(--font-mono);font-variant-numeric:tabular-nums">{{ stop.time }}</span> · {{ stop.sub }}</div>
+                      </div>
+                      <button title="Vote for this stop" style="{{ stop.voteStyle }}" onClick="{{ stop.voteToggle }}">
+                        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"></path></svg>
+                        <span style="font-family:var(--font-mono);font-variant-numeric:tabular-nums">{{ stop.voteCount }}</span>
+                      </button>
+                      <span style="{{ stop.commentStyle }}">
+                        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-9 8.36 8.5 8.5 0 0 1-3.9-.94L3 20l1.08-4.1A8.5 8.5 0 1 1 21 11.5z"></path></svg>
+                        <span style="font-family:var(--font-mono);font-variant-numeric:tabular-nums">{{ stop.commentCount }}</span>
+                      </span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+              <div style="height:12px"></div>
+            </div>
+          </sc-if>
+
+          <!-- Stop detail -->
+          <sc-if value="{{ detailOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:none;padding:10px 12px;border-bottom:1px solid var(--border)">
+              <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Button" variant="ghost" size="sm" onClick="{{ closeDetail }}" hint-size="96px,32px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+                Itinerary
+              </x-import>
+            </div>
+            <div style="flex:1;overflow-y:auto;min-height:0;padding:16px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="font-family:var(--font-heading);font-size:var(--text-xl);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-tight);line-height:var(--leading-tight);text-wrap:balance">{{ detail.name }}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                  <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Badge" variant="secondary" hint-size="80px,22px">{{ detail.dayTime }}</x-import>
+                  <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Badge" variant="outline" hint-size="48px,22px">{{ detail.cat }}</x-import>
+                  <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Badge" variant="info" hint-size="60px,22px">{{ detail.costLabel }}</x-import>
+                </div>
+                <div style="font-size:var(--text-sm);color:var(--muted-foreground)">{{ detail.area }} · added by {{ detail.addedByName }}</div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-xl);background:var(--background)">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <div style="display:flex">
+                      <sc-for list="{{ detail.voters }}" as="v" hint-placeholder-count="2">
+                        <span title="{{ v.name }}" style="{{ v.style }}">{{ v.initials }}</span>
+                      </sc-for>
+                    </div>
+                    <span style="font-size:var(--text-sm);color:var(--muted-foreground)">{{ detail.voteSummary }}</span>
+                  </div>
+                  <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Button" variant="{{ detail.voteVariant }}" size="sm" onClick="{{ detail.toggleVote }}" hint-size="64px,32px">{{ detail.voteLabel }}</x-import>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div style="font-size:var(--text-sm);font-weight:var(--weight-semibold);color:var(--muted-foreground)">{{ detail.commentsHeading }}</div>
+                <sc-for list="{{ detail.comments }}" as="c" hint-placeholder-count="2">
+                  <div style="display:flex;gap:10px;align-items:flex-start">
+                    <span style="{{ c.avStyle }}">{{ c.initials }}</span>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+                      <div style="display:flex;align-items:baseline;gap:8px">
+                        <span style="font-size:var(--text-sm);font-weight:var(--weight-semibold)">{{ c.name }}</span>
+                        <span style="font-family:var(--font-mono);font-size:10.5px;color:var(--muted-foreground)">{{ c.time }}</span>
+                      </div>
+                      <div style="font-size:var(--text-sm);line-height:var(--leading-normal);color:var(--foreground);text-wrap:pretty">{{ c.text }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="flex:none;display:flex;gap:8px;padding:12px;border-top:1px solid var(--border);background:var(--card)">
+              <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Input" placeholder="Add a comment…" value="{{ draft }}" onChange="{{ setDraft }}" onKeyDown="{{ draftKey }}" size="sm" style="flex:1" hint-size="100%,32px"></x-import>
+              <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Button" variant="default" size="sm" onClick="{{ postComment }}" hint-size="52px,32px">Post</x-import>
+            </div>
+          </sc-if>
+    </div>
+    </sc-if>
+
+    <!-- Collapsed: floating expand button -->
+    <sc-if value="{{ sideClosed }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;top:12px;left:12px;z-index:20">
+        <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Button" variant="outline" size="icon-sm" onClick="{{ toggleSide }}" aria-label="Expand sidebar" hint-size="32px,32px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 17l5-5-5-5M13 17l5-5-5-5"></path></svg>
+        </x-import>
+      </div>
+    </sc-if>
+
+    <!-- Main content -->
+    <div style="flex:1;display:flex;flex-direction:column;min-height:0;min-width:0;position:relative">
+
+    <!-- ======================= MAP VIEW ======================= -->
+    <sc-if value="{{ tabMap }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:1;position:relative;min-width:0">
+          <x-import component-from-global-scope="trip-map" from="./trip-map.js" stops="{{ stopsJson }}" day="{{ dayAttr }}" active="{{ activeAttr }}" style="position:absolute;top:0;left:0;right:0;bottom:0" hint-size="100%,100%"></x-import>
+          <sc-if value="{{ legendOn }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute;left:14px;bottom:26px;display:flex;flex-direction:column;gap:6px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-xl);box-shadow:var(--shadow-sm)">
+              <div style="display:flex;align-items:center;gap:7px;font-size:var(--text-xs);color:var(--muted-foreground)"><span style="width:9px;height:9px;border-radius:999px;background:#3f6fc9;flex:none"></span>Day 1 · Tokyo</div>
+              <div style="display:flex;align-items:center;gap:7px;font-size:var(--text-xs);color:var(--muted-foreground)"><span style="width:9px;height:9px;border-radius:999px;background:#305bb0;flex:none"></span>Day 2 · Tokyo</div>
+              <div style="display:flex;align-items:center;gap:7px;font-size:var(--text-xs);color:var(--muted-foreground)"><span style="width:9px;height:9px;border-radius:999px;background:#28304a;flex:none"></span>Day 3 · Tokyo → Kyoto</div>
+              <div style="display:flex;align-items:center;gap:7px;font-size:var(--text-xs);color:var(--muted-foreground)"><span style="width:9px;height:9px;border-radius:999px;background:#3c8f6f;flex:none"></span>Day 4 · Kyoto</div>
+              <div style="display:flex;align-items:center;gap:7px;font-size:var(--text-xs);color:var(--muted-foreground)"><span style="width:9px;height:9px;border-radius:999px;background:#6d788f;flex:none"></span>Day 5 · Kyoto → Osaka</div>
+            </div>
+          </sc-if>
+        </div>
+    </sc-if>
+
+    <!-- ======================= SCHEDULE VIEW ======================= -->
+    <sc-if value="{{ tabSchedule }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;overflow:auto;min-height:0;padding:62px 22px 20px">
+        <div style="display:grid;grid-template-columns:repeat(5, minmax(228px, 1fr));gap:14px;min-width:1180px">
+          <sc-for list="{{ schedDays }}" as="d" hint-placeholder-count="5">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;flex-direction:column;gap:2px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-xl);box-shadow:var(--shadow-xs)">
+                <div style="display:flex;align-items:center;gap:7px">
+                  <span style="{{ d.dotStyle }}"></span>
+                  <span style="font-family:var(--font-heading);font-size:var(--text-base);font-weight:var(--weight-semibold)">{{ d.title }}</span>
+                </div>
+                <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted-foreground);padding-left:16px">{{ d.date }} · {{ d.city }}</div>
+              </div>
+              <div style="display:flex;flex-direction:column">
+                <sc-for list="{{ d.stops }}" as="s" hint-placeholder-count="4">
+                  <div style="display:flex;flex-direction:column">
+                    <div class="ins-zone" title="Insert a stop here" style="height:16px;display:flex;align-items:center;cursor:pointer" onClick="{{ s.insertBefore }}">
+                      <div style="flex:1;height:2px;border-radius:1px;background:var(--corn-300)"></div>
+                      <span style="width:18px;height:18px;border-radius:999px;background:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex:none;margin:0 4px;box-shadow:var(--shadow-xs)">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+                      </span>
+                      <div style="flex:1;height:2px;border-radius:1px;background:var(--corn-300)"></div>
+                    </div>
+                    <sc-if value="{{ s.formBefore }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;margin:2px 0;background:var(--card);border:1px solid var(--corn-300);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm)">
+                        <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Input" placeholder="New stop" value="{{ insName }}" onChange="{{ setInsName }}" onKeyDown="{{ insKey }}" autoFocus="{{ true }}" size="sm" hint-size="100%,32px"></x-import>
+                        <div style="display:flex;gap:8px;align-items:center">
+                          <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Input" placeholder="Time · 14:00" value="{{ insTime }}" onChange="{{ setInsTime }}" onKeyDown="{{ insKey }}" size="sm" style="width:110px" hint-size="110px,32px"></x-import>
+                          <div style="flex:1"></div>
+                          <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Button" variant="ghost" size="sm" onClick="{{ cancelInsert }}" hint-size="60px,32px">Cancel</x-import>
+                          <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Button" variant="default" size="sm" onClick="{{ confirmInsert }}" hint-size="48px,32px">Add</x-import>
+                        </div>
+                      </div>
+                    </sc-if>
+                    <div style="{{ s.cardStyle }}" style-hover="border-color:var(--corn-300);box-shadow:var(--shadow-sm)" onClick="{{ s.select }}" data-comment-anchor="35069e78a9-div">
+                      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+                        <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted-foreground);font-variant-numeric:tabular-nums">{{ s.time }}</span>
+                        <span style="font-family:var(--font-mono);font-size:10.5px;color:var(--muted-foreground);font-variant-numeric:tabular-nums">{{ s.dur }}</span>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:7px">
+                        <span style="{{ s.iconStyle }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ s.icon }}"></path></svg></span>
+                        <div style="flex:1;min-width:0;font-size:var(--text-sm);font-weight:var(--weight-medium);line-height:var(--leading-snug);text-wrap:pretty">{{ s.name }}</div>
+                      </div>
+                      <div style="font-size:var(--text-xs);color:var(--muted-foreground);padding-left:29px">{{ s.meta }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+                <div class="ins-zone" title="Add a stop at the end" style="height:16px;display:flex;align-items:center;cursor:pointer" onClick="{{ d.insertEnd }}">
+                  <div style="flex:1;height:2px;border-radius:1px;background:var(--corn-300)"></div>
+                  <span style="width:18px;height:18px;border-radius:999px;background:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex:none;margin:0 4px;box-shadow:var(--shadow-xs)">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+                  </span>
+                  <div style="flex:1;height:2px;border-radius:1px;background:var(--corn-300)"></div>
+                </div>
+                <sc-if value="{{ d.formEnd }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;margin:2px 0;background:var(--card);border:1px solid var(--corn-300);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm)">
+                    <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Input" placeholder="New stop" value="{{ insName }}" onChange="{{ setInsName }}" onKeyDown="{{ insKey }}" autoFocus="{{ true }}" size="sm" hint-size="100%,32px"></x-import>
+                    <div style="display:flex;gap:8px;align-items:center">
+                      <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Input" placeholder="Time · 14:00" value="{{ insTime }}" onChange="{{ setInsTime }}" onKeyDown="{{ insKey }}" size="sm" style="width:110px" hint-size="110px,32px"></x-import>
+                      <div style="flex:1"></div>
+                      <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Button" variant="ghost" size="sm" onClick="{{ cancelInsert }}" hint-size="60px,32px">Cancel</x-import>
+                      <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Button" variant="default" size="sm" onClick="{{ confirmInsert }}" hint-size="48px,32px">Add</x-import>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ======================= BUDGET VIEW ======================= -->
+    <sc-if value="{{ tabBudget }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;overflow-y:auto;min-height:0">
+        <div style="max-width:1060px;margin:0 auto;padding:62px 24px 40px;display:grid;grid-template-columns:repeat(auto-fit, minmax(330px, 1fr));gap:18px;align-items:start">
+
+          <!-- Expenses -->
+          <div style="display:flex;flex-direction:column;gap:18px;min-width:0">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:12px">
+              <div style="padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-2xl);box-shadow:var(--shadow-xs);display:flex;flex-direction:column;gap:3px">
+                <span style="font-size:var(--text-xs);color:var(--muted-foreground)">Trip total</span>
+                <span style="font-family:var(--font-mono);font-size:var(--text-lg);font-weight:var(--weight-semibold);font-variant-numeric:tabular-nums">{{ totalLabel }}</span>
+              </div>
+              <div style="padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-2xl);box-shadow:var(--shadow-xs);display:flex;flex-direction:column;gap:3px">
+                <span style="font-size:var(--text-xs);color:var(--muted-foreground)">Avg / person</span>
+                <span style="font-family:var(--font-mono);font-size:var(--text-lg);font-weight:var(--weight-semibold);font-variant-numeric:tabular-nums">{{ perPersonLabel }}</span>
+              </div>
+              <div style="padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-2xl);box-shadow:var(--shadow-xs);display:flex;flex-direction:column;gap:3px">
+                <span style="font-size:var(--text-xs);color:var(--muted-foreground)">Expenses</span>
+                <span style="font-family:var(--font-mono);font-size:var(--text-lg);font-weight:var(--weight-semibold);font-variant-numeric:tabular-nums">{{ expenseCount }}</span>
+              </div>
+            </div>
+
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-2xl);box-shadow:var(--shadow-xs);overflow:hidden">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)">
+                <span style="font-family:var(--font-heading);font-size:var(--text-md);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-tight)">Expenses</span>
+                <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Button" variant="brand" size="sm" onClick="{{ toggleExpForm }}" hint-size="110px,32px">{{ expFormLabel }}</x-import>
+              </div>
+
+              <sc-if value="{{ expOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);background:var(--background)">
+                  <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:8px">
+                    <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Input" placeholder="What was it for?" value="{{ expDesc }}" onChange="{{ setExpDesc }}" size="sm" hint-size="100%,32px"></x-import>
+                    <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Input" placeholder="Amount (¥)" type="number" value="{{ expAmount }}" onChange="{{ setExpAmount }}" size="sm" hint-size="100%,32px"></x-import>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <span style="font-size:var(--text-xs);color:var(--muted-foreground);width:64px">Paid by</span>
+                    <sc-for list="{{ payerPills }}" as="p" hint-placeholder-count="4">
+                      <button style="{{ p.style }}" onClick="{{ p.pick }}">{{ p.name }}</button>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                    <span style="font-size:var(--text-xs);color:var(--muted-foreground);width:64px">Split with</span>
+                    <sc-for list="{{ expParts }}" as="p" hint-placeholder-count="4">
+                      <label style="display:flex;align-items:center;gap:7px;font-size:var(--text-sm);cursor:pointer">
+                        <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Checkbox" checked="{{ p.checked }}" onCheckedChange="{{ p.toggle }}" hint-size="18px,18px"></x-import>
+                        {{ p.name }}
+                      </label>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;gap:8px;justify-content:flex-end">
+                    <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Button" variant="default" size="sm" onClick="{{ addExpense }}" hint-size="104px,32px">Add expense</x-import>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-for list="{{ expRows }}" as="e" hint-placeholder-count="6">
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)">
+                  <span style="{{ e.avStyle }}">{{ e.initials }}</span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                    <div style="font-size:var(--text-base);font-weight:var(--weight-medium);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.desc }}</div>
+                    <div style="font-size:var(--text-xs);color:var(--muted-foreground)">{{ e.sub }}</div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+                    <span style="font-family:var(--font-mono);font-size:var(--text-sm);font-weight:var(--weight-semibold);font-variant-numeric:tabular-nums">{{ e.amount }}</span>
+                    <span style="font-family:var(--font-mono);font-size:10.5px;color:var(--muted-foreground);font-variant-numeric:tabular-nums">{{ e.per }}</span>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <!-- Balances + settle up -->
+          <div style="display:flex;flex-direction:column;gap:18px;min-width:0">
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-2xl);box-shadow:var(--shadow-xs);overflow:hidden">
+              <div style="padding:14px 16px;border-bottom:1px solid var(--border);font-family:var(--font-heading);font-size:var(--text-md);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-tight)">Balances</div>
+              <sc-for list="{{ balanceRows }}" as="b" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)">
+                  <span style="{{ b.avStyle }}">{{ b.initials }}</span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                    <span style="font-size:var(--text-sm);font-weight:var(--weight-medium);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.name }}</span>
+                    <span style="font-family:var(--font-mono);font-size:10.5px;color:var(--muted-foreground);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.sub }}</span>
+                  </div>
+                  <span style="{{ b.netStyle }}">{{ b.netLabel }}</span>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-2xl);box-shadow:var(--shadow-xs);overflow:hidden">
+              <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:2px">
+                <span style="font-family:var(--font-heading);font-size:var(--text-md);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-tight)">Settle up</span>
+                <span style="font-size:var(--text-xs);color:var(--muted-foreground)">{{ settleSummary }}</span>
+              </div>
+              <sc-for list="{{ settleRows }}" as="s" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)">
+                  <span style="{{ s.fromAvStyle }}" title="{{ s.fromName }}">{{ s.fromInitials }}</span>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0">
+                    <span style="font-family:var(--font-mono);font-size:var(--text-sm);font-weight:var(--weight-semibold);color:var(--corn-600);font-variant-numeric:tabular-nums">{{ s.amount }}</span>
+                    <svg width="100%" height="8" viewBox="0 0 120 8" preserveAspectRatio="none" style="display:block;color:var(--corn-300)"><line x1="0" y1="4" x2="112" y2="4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"></line><path d="M112 1l6 3-6 3z" fill="currentColor"></path></svg>
+                  </div>
+                  <span style="{{ s.toAvStyle }}" title="{{ s.toName }}">{{ s.toInitials }}</span>
+                </div>
+              </sc-for>
+              <div style="padding:12px 16px;font-size:var(--text-xs);color:var(--muted-foreground)">Everyone paid, nothing else owed once these clear.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    </div>
+
+    <!-- Floating members -->
+    <div style="position:absolute;top:12px;right:12px;z-index:20;display:flex;align-items:center;gap:10px;padding:5px 6px 5px 10px;background:var(--card);border:1px solid var(--border);border-radius:999px;box-shadow:var(--shadow-sm)" data-comment-anchor="3fc1a61edc-div">
+      <div style="display:flex;align-items:center">
+        <span title="Lynn Weber (you) — online" style="width:30px;height:30px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:var(--weight-semibold);background:#dde7fb;color:#2b4d93;border:2px solid var(--card);position:relative;z-index:4">LW<span style="position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;border-radius:999px;background:oklch(0.62 0.13 162);border:2px solid var(--card)"></span></span>
+        <span title="Marco Bailey — online" style="width:30px;height:30px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:var(--weight-semibold);background:#dde2ee;color:#3c4760;border:2px solid var(--card);margin-left:-8px;position:relative;z-index:3">MB<span style="position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;border-radius:999px;background:oklch(0.62 0.13 162);border:2px solid var(--card)"></span></span>
+        <span title="Aiko Tanaka" style="width:30px;height:30px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:var(--weight-semibold);background:#d9efe6;color:#1f6b4d;border:2px solid var(--card);margin-left:-8px;position:relative;z-index:2">AT</span>
+        <span title="Sam Porter" style="width:30px;height:30px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:var(--weight-semibold);background:#f3e8d3;color:#7a5a1e;border:2px solid var(--card);margin-left:-8px;position:relative;z-index:1">SP</span>
+      </div>
+      <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Button" variant="outline" size="sm" onClick="{{ invite }}" hint-size="72px,32px">{{ inviteLabel }}</x-import>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ============================== TRIPS HOME ============================== -->
+  <sc-if value="{{ isTrips }}" hint-placeholder-val="{{ false }}">
+    <div style="height:56px;flex:none;display:flex;align-items:center;gap:12px;padding:0 24px;background:var(--card);border-bottom:1px solid var(--border)">
+      <span style="font-family:var(--font-heading);font-size:var(--text-md);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-tight)">wayfare</span>
+      <span style="font-family:var(--font-mono);font-size:10.5px;color:var(--muted-foreground);padding:2px 6px;border:1px solid var(--border);border-radius:var(--radius-sm)">beta</span>
+      <div style="flex:1"></div>
+      <span style="width:30px;height:30px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:var(--weight-semibold);background:#dde7fb;color:#2b4d93">LW</span>
+    </div>
+    <div style="flex:1;overflow-y:auto;min-height:0">
+      <div style="max-width:1020px;margin:0 auto;padding:36px 24px 48px;display:flex;flex-direction:column;gap:24px">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h1 style="margin:0;font-family:var(--font-heading);font-size:var(--text-2xl);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-tight)">Trips</h1>
+            <p style="margin:0;font-size:var(--text-sm);color:var(--muted-foreground)">Plan together, split everything.</p>
+          </div>
+          <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Button" variant="brand" hint-size="96px,36px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+            New trip
+          </x-import>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:16px">
+          <!-- Japan (active) -->
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-2xl);box-shadow:var(--shadow-sm);overflow:hidden;cursor:pointer;transition:border-color .15s ease, box-shadow .15s ease" style-hover="border-color:var(--corn-300);box-shadow:var(--shadow-md)" onClick="{{ openTrip }}">
+            <div style="height:116px;background:var(--ink-150);position:relative">
+              <svg viewBox="0 0 320 116" style="position:absolute;inset:0;width:100%;height:100%">
+                <path d="M46 78 C 90 30, 150 96, 196 46 S 268 60, 282 34" fill="none" stroke="#3f6fc9" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round"></path>
+                <circle cx="46" cy="78" r="5" fill="#3f6fc9" stroke="#fff" stroke-width="2"></circle>
+                <circle cx="196" cy="46" r="5" fill="#28304a" stroke="#fff" stroke-width="2"></circle>
+                <circle cx="282" cy="34" r="5" fill="#6d788f" stroke="#fff" stroke-width="2"></circle>
+              </svg>
+            </div>
+            <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                <span style="font-family:var(--font-heading);font-size:var(--text-md);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-tight)">Japan — the golden route</span>
+                <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Badge" variant="info" hint-size="48px,22px">Active</x-import>
+              </div>
+              <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted-foreground)">Oct 12 – 16, 2026 · 22 stops · {{ totalLabel }}</div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="display:flex">
+                  <span style="width:24px;height:24px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:var(--weight-semibold);background:#dde7fb;color:#2b4d93;border:2px solid var(--card)">LW</span>
+                  <span style="width:24px;height:24px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:var(--weight-semibold);background:#dde2ee;color:#3c4760;border:2px solid var(--card);margin-left:-7px">MB</span>
+                  <span style="width:24px;height:24px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:var(--weight-semibold);background:#d9efe6;color:#1f6b4d;border:2px solid var(--card);margin-left:-7px">AT</span>
+                  <span style="width:24px;height:24px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:var(--weight-semibold);background:#f3e8d3;color:#7a5a1e;border:2px solid var(--card);margin-left:-7px">SP</span>
+                </div>
+                <span style="font-size:var(--text-xs);color:var(--corn-600);font-weight:var(--weight-medium)">Open →</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Iceland (planning) -->
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-2xl);box-shadow:var(--shadow-xs);overflow:hidden;opacity:.85">
+            <div style="height:116px;background:var(--ink-150);position:relative">
+              <svg viewBox="0 0 320 116" style="position:absolute;inset:0;width:100%;height:100%">
+                <path d="M60 66 C 110 100, 210 20, 264 62" fill="none" stroke="#97a0b6" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round"></path>
+                <circle cx="60" cy="66" r="5" fill="#97a0b6" stroke="#fff" stroke-width="2"></circle>
+                <circle cx="264" cy="62" r="5" fill="#97a0b6" stroke="#fff" stroke-width="2"></circle>
+              </svg>
+            </div>
+            <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                <span style="font-family:var(--font-heading);font-size:var(--text-md);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-tight)">Iceland ring road</span>
+                <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Badge" variant="secondary" hint-size="60px,22px">Planning</x-import>
+              </div>
+              <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted-foreground)">Jun 2027 · dates not set</div>
+              <div style="display:flex">
+                <span style="width:24px;height:24px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:var(--weight-semibold);background:#dde7fb;color:#2b4d93;border:2px solid var(--card)">LW</span>
+                <span style="width:24px;height:24px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:var(--weight-semibold);background:#dde2ee;color:#3c4760;border:2px solid var(--card);margin-left:-7px">MB</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lisbon (completed) -->
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-2xl);box-shadow:var(--shadow-xs);overflow:hidden;opacity:.85">
+            <div style="height:116px;background:var(--ink-150);position:relative">
+              <svg viewBox="0 0 320 116" style="position:absolute;inset:0;width:100%;height:100%">
+                <path d="M84 40 C 130 80, 200 88, 244 52" fill="none" stroke="#97a0b6" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round"></path>
+                <circle cx="84" cy="40" r="5" fill="#97a0b6" stroke="#fff" stroke-width="2"></circle>
+                <circle cx="244" cy="52" r="5" fill="#97a0b6" stroke="#fff" stroke-width="2"></circle>
+              </svg>
+            </div>
+            <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                <span style="font-family:var(--font-heading);font-size:var(--text-md);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-tight)">Lisbon weekend</span>
+                <x-import component-from-global-scope="CossUIDesignSystem_2babcc.Badge" variant="success" hint-size="60px,22px">Settled</x-import>
+              </div>
+              <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted-foreground)">Mar 6 – 8, 2026 · ¥— settled</div>
+              <div style="display:flex">
+                <span style="width:24px;height:24px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:var(--weight-semibold);background:#dde7fb;color:#2b4d93;border:2px solid var(--card)">LW</span>
+                <span style="width:24px;height:24px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:var(--weight-semibold);background:#d9efe6;color:#1f6b4d;border:2px solid var(--card);margin-left:-7px">AT</span>
+                <span style="width:24px;height:24px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:var(--weight-semibold);background:#f3e8d3;color:#7a5a1e;border:2px solid var(--card);margin-left:-7px">SP</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;defaultTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;map&quot;,&quot;options&quot;:[&quot;map&quot;,&quot;schedule&quot;,&quot;budget&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;compactRows&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Itinerary&quot;},&quot;showLegend&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Map&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.members = [
+      { id: "lynn", name: "Lynn Weber", short: "Lynn", initials: "LW", bg: "#dde7fb", fg: "#2b4d93", me: true },
+      { id: "marco", name: "Marco Bailey", short: "Marco", initials: "MB", bg: "#dde2ee", fg: "#3c4760" },
+      { id: "aiko", name: "Aiko Tanaka", short: "Aiko", initials: "AT", bg: "#d9efe6", fg: "#1f6b4d" },
+      { id: "sam", name: "Sam Porter", short: "Sam", initials: "SP", bg: "#f3e8d3", fg: "#7a5a1e" }
+    ];
+    this.days = [
+      { n: 1, date: "Mon, Oct 12", city: "Tokyo", color: "#3f6fc9" },
+      { n: 2, date: "Tue, Oct 13", city: "Tokyo", color: "#305bb0" },
+      { n: 3, date: "Wed, Oct 14", city: "Tokyo → Kyoto", color: "#28304a" },
+      { n: 4, date: "Thu, Oct 15", city: "Kyoto", color: "#3c8f6f" },
+      { n: 5, date: "Fri, Oct 16", city: "Kyoto → Osaka", color: "#6d788f" }
+    ];
+    const all = ["lynn", "marco", "aiko", "sam"];
+    this.state = {
+      view: "planner",
+      sideOpen: true,
+      tab: null,
+      day: 0,
+      selStop: null,
+      draft: "",
+      inviteLabel: "Invite",
+      insertAt: null,
+      insName: "",
+      insTime: "",
+      expOpen: false,
+      expDesc: "",
+      expAmount: "",
+      expPayer: "lynn",
+      expParts: { lynn: true, marco: true, aiko: true, sam: true },
+      stops: [
+        { id: "s1", day: 1, time: "09:30", dur: "1.5h", name: "Senso-ji Temple", area: "Asakusa", cat: "Sight", lat: 35.7148, lng: 139.7967, cost: 0, by: "marco", votes: ["lynn", "marco"], comments: [{ by: "marco", time: "3d ago", text: "Go early — the Kaminarimon photo is impossible after 10." }] },
+        { id: "s2", day: 1, time: "12:00", dur: "1h", name: "Nakamise-dori street food", area: "Asakusa", cat: "Food", lat: 35.7112, lng: 139.7965, cost: 1500, by: "marco", votes: [], comments: [] },
+        { id: "s3", day: 1, time: "15:00", dur: "2.5h", name: "teamLab Planets", area: "Toyosu", cat: "Activity", lat: 35.6494, lng: 139.7898, cost: 3700, by: "aiko", votes: ["lynn", "marco", "aiko", "sam"], comments: [{ by: "aiko", time: "3d ago", text: "Book the 15:00 slot — weekday evenings sell out." }, { by: "marco", time: "2d ago", text: "Wear shorts. The water room is real." }] },
+        { id: "s3b", day: 1, time: "17:00", dur: "45m", name: "Check in — Shibuya Stream Excel", area: "Shibuya", cat: "Stay", lat: 35.658, lng: 139.7016, cost: 0, by: "lynn", votes: [], comments: [] },
+        { id: "s4", day: 1, time: "18:30", dur: "2h", name: "Shibuya Crossing + Ichiran", area: "Shibuya", cat: "Food", lat: 35.6595, lng: 139.7005, cost: 1400, by: "lynn", votes: ["sam"], comments: [] },
+        { id: "s5", day: 2, time: "08:00", dur: "1.5h", name: "Tsukiji Outer Market", area: "Chuo", cat: "Food", lat: 35.6654, lng: 139.7707, cost: 1800, by: "lynn", votes: ["lynn", "aiko"], comments: [] },
+        { id: "s6", day: 2, time: "10:30", dur: "1.5h", name: "Meiji Shrine", area: "Shibuya", cat: "Sight", lat: 35.6764, lng: 139.6993, cost: 0, by: "sam", votes: [], comments: [] },
+        { id: "s7", day: 2, time: "13:00", dur: "2h", name: "Harajuku + Omotesando shopping", area: "Shibuya", cat: "Shopping", lat: 35.6702, lng: 139.7027, cost: 0, by: "sam", votes: [], comments: [] },
+        { id: "s8", day: 2, time: "16:00", dur: "1.5h", name: "Shinjuku Gyoen", area: "Shinjuku", cat: "Park", lat: 35.6852, lng: 139.71, cost: 500, by: "aiko", votes: [], comments: [] },
+        { id: "s9", day: 2, time: "19:30", dur: "2h", name: "Omoide Yokocho", area: "Shinjuku", cat: "Food", lat: 35.6938, lng: 139.6999, cost: 2500, by: "marco", votes: ["marco"], comments: [{ by: "marco", time: "2d ago", text: "Cash only, and most stalls seat six — perfect for us." }] },
+        { id: "s10", day: 3, time: "08:24", dur: "2.5h", name: "Shinkansen Nozomi → Kyoto", area: "Tokyo Sta. → Kyoto Sta.", cat: "Transit", lat: 34.9858, lng: 135.7588, cost: 0, by: "lynn", votes: [], comments: [], transit: true },
+        { id: "s11", day: 3, time: "11:30", dur: "2.5h", name: "Fushimi Inari Taisha", area: "Fushimi", cat: "Sight", lat: 34.9671, lng: 135.7727, cost: 0, by: "sam", votes: ["lynn", "sam"], comments: [{ by: "sam", time: "2d ago", text: "Start by 11 and we beat the tour buses to the upper gates." }] },
+        { id: "s12", day: 3, time: "15:00", dur: "2h", name: "Gion + Hanamikoji walk", area: "Higashiyama", cat: "Walk", lat: 35.0037, lng: 135.7788, cost: 0, by: "lynn", votes: [], comments: [] },
+        { id: "s12b", day: 3, time: "17:15", dur: "45m", name: "Check in — Gion machiya", area: "Higashiyama", cat: "Stay", lat: 35.0031, lng: 135.7752, cost: 0, by: "aiko", votes: [], comments: [] },
+        { id: "s13", day: 3, time: "18:30", dur: "2h", name: "Pontocho Alley dinner", area: "Nakagyo", cat: "Food", lat: 35.009, lng: 135.771, cost: 4600, by: "marco", votes: ["aiko"], comments: [] },
+        { id: "s14", day: 4, time: "08:00", dur: "2h", name: "Arashiyama Bamboo Grove", area: "Arashiyama", cat: "Sight", lat: 35.017, lng: 135.671, cost: 0, by: "aiko", votes: ["aiko", "lynn", "sam"], comments: [] },
+        { id: "s15", day: 4, time: "11:00", dur: "1.5h", name: "Kinkaku-ji (Golden Pavilion)", area: "Kita", cat: "Sight", lat: 35.0394, lng: 135.7292, cost: 500, by: "aiko", votes: ["aiko"], comments: [{ by: "marco", time: "1d ago", text: "Swap for Ginkaku-ji if we run short? Way less crowded." }, { by: "lynn", time: "1d ago", text: "Both is too much — vote here and we keep the winner." }] },
+        { id: "s16", day: 4, time: "14:00", dur: "1.5h", name: "Nishiki Market", area: "Nakagyo", cat: "Food", lat: 35.005, lng: 135.7649, cost: 2000, by: "marco", votes: [], comments: [] },
+        { id: "s17", day: 4, time: "17:30", dur: "1.5h", name: "Kiyomizu-dera at sunset", area: "Higashiyama", cat: "Sight", lat: 34.9949, lng: 135.785, cost: 400, by: "lynn", votes: ["lynn", "marco", "aiko"], comments: [] },
+        { id: "s18", day: 5, time: "09:15", dur: "1h", name: "Ltd. Express → Osaka", area: "Kyoto → Umeda", cat: "Transit", lat: 34.7025, lng: 135.4959, cost: 0, by: "lynn", votes: [], comments: [], transit: true },
+        { id: "s19", day: 5, time: "10:30", dur: "2h", name: "Osaka Castle", area: "Chuo-ku", cat: "Sight", lat: 34.6873, lng: 135.5262, cost: 600, by: "sam", votes: [], comments: [] },
+        { id: "s20", day: 5, time: "13:00", dur: "1.5h", name: "Kuromon Ichiba Market", area: "Nipponbashi", cat: "Food", lat: 34.6656, lng: 135.5062, cost: 2200, by: "aiko", votes: ["marco"], comments: [] },
+        { id: "s21", day: 5, time: "16:00", dur: "1.5h", name: "Umeda Sky Building", area: "Kita-ku", cat: "Sight", lat: 34.7055, lng: 135.4903, cost: 1500, by: "sam", votes: [], comments: [] },
+        { id: "s21b", day: 5, time: "17:45", dur: "1h", name: "Shinsaibashi-suji arcade", area: "Chuo-ku", cat: "Shopping", lat: 34.6724, lng: 135.501, cost: 0, by: "sam", votes: [], comments: [] },
+        { id: "s22", day: 5, time: "19:00", dur: "3h", name: "Dotonbori night crawl", area: "Namba", cat: "Food", lat: 34.6687, lng: 135.5013, cost: 3000, by: "marco", votes: ["lynn", "marco", "sam"], comments: [{ by: "aiko", time: "5h ago", text: "Ending the trip here is non-negotiable." }] }
+      ],
+      expenses: [
+        { id: "e1", desc: "Hotel — Shibuya Stream (2 nights)", payer: "lynn", amount: 84000, parts: all.slice(), when: "Day 1–2" },
+        { id: "e2", desc: "JR Pass × 4 (7-day)", payer: "marco", amount: 120000, parts: all.slice(), when: "Pre-trip" },
+        { id: "e3", desc: "teamLab Planets tickets", payer: "aiko", amount: 11100, parts: ["lynn", "aiko", "sam"], when: "Day 1" },
+        { id: "e4", desc: "Ichiran dinner", payer: "aiko", amount: 5600, parts: all.slice(), when: "Day 1" },
+        { id: "e5", desc: "Tsukiji breakfast crawl", payer: "lynn", amount: 7200, parts: all.slice(), when: "Day 2" },
+        { id: "e6", desc: "Kyoto machiya (2 nights)", payer: "sam", amount: 96000, parts: all.slice(), when: "Day 3–4" },
+        { id: "e7", desc: "Pontocho riverside dinner", payer: "marco", amount: 18400, parts: all.slice(), when: "Day 3" },
+        { id: "e8", desc: "Pocket wifi + Suica top-ups", payer: "sam", amount: 9600, parts: all.slice(), when: "Pre-trip" }
+      ]
+    };
+  }
+
+  componentDidMount() {
+    this._onMapSelect = (e) => {
+      const id = e.detail && e.detail.id;
+      if (id) this.setState({ selStop: id });
+    };
+    window.addEventListener("trip-map-select", this._onMapSelect);
+  }
+  componentWillUnmount() {
+    window.removeEventListener("trip-map-select", this._onMapSelect);
+  }
+
+  catMeta(cat) {
+    const M = {
+      Sight: { d: "M3 21h18 M5 21v-8 M9 21v-8 M15 21v-8 M19 21v-8 M3 10l9-6 9 6Z", bg: "var(--secondary)", fg: "var(--ink-600)" },
+      Food: { d: "M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2 M7 2v20 M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7", bg: "color-mix(in srgb, var(--warning) 16%, transparent)", fg: "var(--warning-foreground)" },
+      Stay: { d: "M2 4v16 M2 8h18a2 2 0 0 1 2 2v10 M2 17h20 M6 8v9", bg: "var(--brand-muted)", fg: "var(--corn-600)" },
+      Shopping: { d: "M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z M3 6h18 M16 10a4 4 0 0 1-8 0", bg: "color-mix(in srgb, var(--success) 12%, transparent)", fg: "var(--success-foreground)" },
+      Activity: { d: "M2 9a3 3 0 0 1 0 6v3a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3a3 3 0 0 1 0-6V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z M13 5v2 M13 11v2 M13 17v2", bg: "color-mix(in srgb, var(--info) 10%, transparent)", fg: "var(--info-foreground)" },
+      Walk: { d: "M5 17a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z M19 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z M7 19h8a4 4 0 0 0 0-8H9a4 4 0 0 1 0-8h8", bg: "var(--secondary)", fg: "var(--ink-600)" },
+      Park: { d: "M12 2 7 9h2l-3 5h3l-2 4h10l-2-4h3l-3-5h2Z M12 18v4", bg: "color-mix(in srgb, var(--success) 12%, transparent)", fg: "var(--success-foreground)" },
+      Transit: { d: "M4 15V7a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3Z M4 11h16 M8 15h.01 M16 15h.01 M9 18l-2 3 M15 18l2 3", bg: "var(--secondary)", fg: "var(--ink-500)" },
+      Plan: { d: "M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z", bg: "var(--secondary)", fg: "var(--ink-500)" }
+    };
+    return M[cat] || M.Plan;
+  }
+
+  member(id) {
+    return this.members.find((m) => m.id === id) || this.members[0];
+  }
+  yen(n) {
+    return "¥" + Math.round(n).toLocaleString("en-US");
+  }
+  avStyle(m, size, z) {
+    const s = size || 26;
+    return "width:" + s + "px;height:" + s + "px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;flex:none;font-size:" + Math.round(s * 0.38) + "px;font-weight:600;background:" + m.bg + ";color:" + m.fg + (z != null ? ";border:2px solid var(--card);margin-left:" + (z > 0 ? "-7px" : "0") : "");
+  }
+  numsForStops() {
+    const counts = {};
+    return this.state.stops.map((s) => {
+      counts[s.day] = (counts[s.day] || 0) + 1;
+      return counts[s.day];
+    });
+  }
+  balances() {
+    const paid = {}, share = {};
+    this.members.forEach((m) => { paid[m.id] = 0; share[m.id] = 0; });
+    this.state.expenses.forEach((e) => {
+      paid[e.payer] += e.amount;
+      const s = e.amount / e.parts.length;
+      e.parts.forEach((p) => { share[p] += s; });
+    });
+    const net = {};
+    this.members.forEach((m) => { net[m.id] = Math.round(paid[m.id] - share[m.id]); });
+    const debtors = this.members.filter((m) => net[m.id] < 0).map((m) => ({ id: m.id, v: -net[m.id] })).sort((a, b) => b.v - a.v);
+    const creditors = this.members.filter((m) => net[m.id] > 0).map((m) => ({ id: m.id, v: net[m.id] })).sort((a, b) => b.v - a.v);
+    const settlements = [];
+    let i = 0, j = 0;
+    while (i < debtors.length && j < creditors.length) {
+      const x = Math.min(debtors[i].v, creditors[j].v);
+      if (x > 0.5) settlements.push({ from: debtors[i].id, to: creditors[j].id, amount: Math.round(x) });
+      debtors[i].v -= x; creditors[j].v -= x;
+      if (debtors[i].v < 1) i++;
+      if (creditors[j].v < 1) j++;
+    }
+    return { paid, share, net, settlements };
+  }
+
+  renderVals() {
+    const st = this.state;
+    const tab = st.tab || this.props.defaultTab || "map";
+    const compact = this.props.compactRows ?? false;
+    const dayColor = (n) => (this.days.find((d) => d.n === n) || {}).color || "#3f6fc9";
+    const nums = this.numsForStops();
+    const me = "lynn";
+
+    // ---- map data
+    const stopsJson = JSON.stringify(this.state.stops.map((s, i) => ({
+      id: s.id, name: s.name, lat: s.lat, lng: s.lng, day: s.day,
+      color: dayColor(s.day), num: nums[i], transit: !!s.transit
+    })));
+
+    // ---- day pills
+    const pillBase = "flex:none;height:28px;padding:0 12px;border-radius:999px;font-family:var(--font-sans);font-size:12.5px;font-weight:500;cursor:pointer;transition:background-color .15s ease,color .15s ease;";
+    const dayPills = [{ n: 0, label: "All days" }].concat(this.days.map((d) => ({ n: d.n, label: "Day " + d.n }))).map((p) => ({
+      label: p.label,
+      style: pillBase + (st.day === p.n
+        ? "background:var(--primary);color:var(--primary-foreground);border:1px solid var(--primary);"
+        : "background:var(--card);color:var(--muted-foreground);border:1px solid var(--border);"),
+      select: () => this.setState({ day: p.n, selStop: null })
+    }));
+
+    // ---- itinerary groups
+    const rowPad = compact ? "6px 16px" : "10px 16px";
+    const visibleDays = st.day === 0 ? this.days : this.days.filter((d) => d.n === st.day);
+    const listGroups = visibleDays.map((d) => ({
+      label: "Day " + d.n + " · " + d.date,
+      city: d.city,
+      dotStyle: "width:9px;height:9px;border-radius:999px;flex:none;background:" + d.color,
+      stops: this.state.stops.map((s, i) => ({ s, i })).filter((x) => x.s.day === d.n).map(({ s, i }) => {
+        const voted = s.votes.indexOf(me) >= 0;
+        return {
+          id: s.id,
+          num: nums[i],
+          numStyle: "width:24px;height:24px;border-radius:" + (s.transit ? "7px" : "999px") + ";flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;background:" + d.color,
+          name: s.name,
+          time: s.time,
+          sub: s.area + (s.cost ? " · " + this.yen(s.cost) + " pp" : ""),
+          rowStyle: "display:flex;align-items:center;gap:10px;padding:" + rowPad + ";cursor:pointer;transition:background-color .12s ease;" + (st.selStop === s.id ? "background:var(--brand-muted);" : ""),
+          voteCount: s.votes.length,
+          voteStyle: "display:inline-flex;align-items:center;gap:3px;height:22px;padding:0 7px;border-radius:var(--radius-sm);font-size:11px;cursor:pointer;flex:none;transition:background-color .12s ease;border:1px solid transparent;" + (voted ? "background:var(--brand-muted);color:var(--corn-600);" : "background:var(--secondary);color:var(--muted-foreground);"),
+          commentCount: s.comments.length,
+          commentStyle: "display:" + (s.comments.length ? "inline-flex" : "none") + ";align-items:center;gap:3px;height:22px;padding:0 7px;border-radius:var(--radius-sm);font-size:11px;flex:none;background:var(--secondary);color:var(--muted-foreground)",
+          select: () => this.setState({ selStop: s.id }),
+          voteToggle: (e) => { e.stopPropagation(); this.toggleVote(s.id); }
+        };
+      })
+    }));
+
+    const visCount = st.day === 0 ? this.state.stops.length : this.state.stops.filter((s) => s.day === st.day).length;
+
+    // ---- detail
+    const sel = this.state.stops.find((s) => s.id === st.selStop);
+    let detail = null;
+    if (sel) {
+      const voted = sel.votes.indexOf(me) >= 0;
+      detail = {
+        name: sel.name,
+        dayTime: "Day " + sel.day + " · " + sel.time + " · " + sel.dur,
+        cat: sel.cat,
+        costLabel: sel.cost ? this.yen(sel.cost) + " / person" : "Free",
+        area: sel.area,
+        addedByName: this.member(sel.by).short,
+        voters: sel.votes.map((id, k) => {
+          const m = this.member(id);
+          return { name: m.name, initials: m.initials, style: this.avStyle(m, 24, k) };
+        }),
+        voteSummary: sel.votes.length === 0 ? "No votes yet" : sel.votes.length + " of 4 want this",
+        voteVariant: voted ? "secondary" : "brand",
+        voteLabel: voted ? "Voted ✓" : "Vote",
+        toggleVote: () => this.toggleVote(sel.id),
+        commentsHeading: sel.comments.length ? "Comments (" + sel.comments.length + ")" : "Comments — start the discussion",
+        comments: sel.comments.map((c) => {
+          const m = this.member(c.by);
+          return { initials: m.initials, avStyle: this.avStyle(m, 26), name: m.short, time: c.time, text: c.text };
+        })
+      };
+    }
+
+    // ---- schedule
+    const insertAt = st.insertAt;
+    const schedDays = this.days.map((d) => {
+      const dayStops = this.state.stops.filter((s) => s.day === d.n);
+      return {
+        title: "Day " + d.n,
+        date: d.date,
+        city: d.city,
+        dotStyle: "width:9px;height:9px;border-radius:999px;flex:none;background:" + d.color,
+        stops: dayStops.map((s, idx) => ({
+          time: s.time,
+          dur: s.dur,
+          name: s.name,
+          icon: this.catMeta(s.cat).d,
+          iconStyle: "width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;flex:none;background:" + this.catMeta(s.cat).bg + ";color:" + this.catMeta(s.cat).fg,
+          meta: s.cat + (s.cost ? " · " + this.yen(s.cost) + " pp" : "") + (s.votes.length ? " · ▲ " + s.votes.length : ""),
+          cardStyle: "display:flex;flex-direction:column;gap:4px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-left:3px solid " + d.color + ";border-radius:var(--radius-lg);box-shadow:var(--shadow-xs);cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease",
+          select: () => this.setState({ tab: "map", selStop: s.id, day: 0 }),
+          insertBefore: (e) => { e.stopPropagation(); this.openInsert(d.n, idx); },
+          formBefore: !!(insertAt && insertAt.day === d.n && insertAt.index === idx)
+        })),
+        insertEnd: () => this.openInsert(d.n, dayStops.length),
+        formEnd: !!(insertAt && insertAt.day === d.n && insertAt.index === dayStops.length)
+      };
+    });
+
+    // ---- budget
+    const bal = this.balances();
+    const total = this.state.expenses.reduce((a, e) => a + e.amount, 0);
+    const expRows = this.state.expenses.slice().reverse().map((e) => {
+      const m = this.member(e.payer);
+      return {
+        initials: m.initials,
+        avStyle: this.avStyle(m, 30),
+        desc: e.desc,
+        sub: "Paid by " + (m.me ? "you" : m.short) + " · " + e.when + " · split " + e.parts.length + " way" + (e.parts.length > 1 ? "s" : ""),
+        amount: this.yen(e.amount),
+        per: this.yen(e.amount / e.parts.length) + " each"
+      };
+    });
+    const balanceRows = this.members.map((m) => {
+      const net = bal.net[m.id];
+      return {
+        initials: m.initials,
+        avStyle: this.avStyle(m, 30),
+        name: m.me ? m.name + " (you)" : m.name,
+        sub: "paid " + this.yen(bal.paid[m.id]) + " · share " + this.yen(bal.share[m.id]),
+        netLabel: (net >= 0 ? "+" : "−") + this.yen(Math.abs(net)).slice(0),
+        netStyle: "flex:none;white-space:nowrap;font-family:var(--font-mono);font-size:var(--text-sm);font-weight:600;font-variant-numeric:tabular-nums;color:" + (net >= 0 ? "oklch(0.52 0.12 162)" : "oklch(0.52 0.20 20)")
+      };
+    });
+    const settleRows = bal.settlements.map((s) => {
+      const f = this.member(s.from), t = this.member(s.to);
+      return {
+        fromInitials: f.initials, fromName: f.name, fromAvStyle: this.avStyle(f, 30),
+        toInitials: t.initials, toName: t.name, toAvStyle: this.avStyle(t, 30),
+        amount: this.yen(s.amount)
+      };
+    });
+
+    // ---- expense form
+    const payerPills = this.members.map((m) => ({
+      name: m.short,
+      style: pillBase + (st.expPayer === m.id
+        ? "background:var(--primary);color:var(--primary-foreground);border:1px solid var(--primary);"
+        : "background:var(--card);color:var(--muted-foreground);border:1px solid var(--border);"),
+      pick: () => this.setState({ expPayer: m.id })
+    }));
+    const expParts = this.members.map((m) => ({
+      name: m.short,
+      checked: !!st.expParts[m.id],
+      toggle: (v) => this.setState({ expParts: Object.assign({}, this.state.expParts, { [m.id]: v }) })
+    }));
+
+    return {
+      // shell
+      isPlanner: st.view === "planner",
+      isTrips: st.view === "trips",
+      tab,
+      tabMap: tab === "map",
+      tabSchedule: tab === "schedule",
+      tabBudget: tab === "budget",
+      viewTabs: [{ value: "map", label: "Map" }, { value: "schedule", label: "Schedule" }, { value: "budget", label: "Budget" }],
+      setTab: (v) => this.setState({ tab: v }),
+      goHome: () => this.setState({ view: "trips" }),
+      sideOpen: st.sideOpen,
+      sideClosed: !st.sideOpen,
+      toggleSide: () => this.setState({ sideOpen: !this.state.sideOpen }),
+      openTrip: () => this.setState({ view: "planner" }),
+      inviteLabel: st.inviteLabel,
+      invite: () => {
+        this.setState({ inviteLabel: "Link copied ✓" });
+        clearTimeout(this._invT);
+        this._invT = setTimeout(() => this.setState({ inviteLabel: "Invite" }), 1800);
+      },
+      // map view
+      dayPills,
+      listGroups,
+      visibleCountLabel: visCount + " stops",
+      stopsJson,
+      dayAttr: String(st.day),
+      activeAttr: st.selStop || "",
+      legendOn: (this.props.showLegend ?? true) && st.day === 0,
+      showList: !sel,
+      detailOpen: !!sel,
+      detail,
+      closeDetail: () => this.setState({ selStop: null }),
+      draft: st.draft,
+      setDraft: (e) => this.setState({ draft: e.target.value }),
+      draftKey: (e) => { if (e.key === "Enter") this.postComment(); },
+      postComment: () => this.postComment(),
+      // schedule
+      schedDays,
+      insName: st.insName,
+      insTime: st.insTime,
+      setInsName: (e) => this.setState({ insName: e.target.value }),
+      setInsTime: (e) => this.setState({ insTime: e.target.value }),
+      insKey: (e) => {
+        if (e.key === "Enter") this.confirmInsert();
+        if (e.key === "Escape") this.setState({ insertAt: null });
+      },
+      cancelInsert: () => this.setState({ insertAt: null }),
+      confirmInsert: () => this.confirmInsert(),
+      // budget
+      totalLabel: this.yen(total),
+      perPersonLabel: this.yen(total / 4),
+      expenseCount: String(this.state.expenses.length),
+      expRows,
+      balanceRows,
+      settleRows,
+      settleSummary: bal.settlements.length + " transfer" + (bal.settlements.length === 1 ? "" : "s") + " clears the whole trip",
+      expOpen: st.expOpen,
+      expFormLabel: st.expOpen ? "Close" : "Add expense",
+      toggleExpForm: () => this.setState({ expOpen: !this.state.expOpen }),
+      expDesc: st.expDesc,
+      expAmount: st.expAmount,
+      setExpDesc: (e) => this.setState({ expDesc: e.target.value }),
+      setExpAmount: (e) => this.setState({ expAmount: e.target.value }),
+      payerPills,
+      expParts,
+      addExpense: () => this.addExpense()
+    };
+  }
+
+  openInsert(day, index) {
+    this.setState({ insertAt: { day, index }, insName: "", insTime: "" });
+  }
+
+  confirmInsert() {
+    const at = this.state.insertAt;
+    if (!at) return;
+    const name = this.state.insName.trim();
+    if (!name) return;
+    const dayStops = this.state.stops.filter((s) => s.day === at.day);
+    const prev = dayStops[at.index - 1] || null;
+    const next = dayStops[at.index] || null;
+    const centers = { 1: [35.68, 139.75], 2: [35.68, 139.72], 3: [35.0, 135.77], 4: [35.01, 135.75], 5: [34.69, 135.5] };
+    const lat = prev && next ? (prev.lat + next.lat) / 2 : prev ? prev.lat + 0.004 : next ? next.lat - 0.004 : centers[at.day][0];
+    const lng = prev && next ? (prev.lng + next.lng) / 2 : prev ? prev.lng + 0.004 : next ? next.lng - 0.004 : centers[at.day][1];
+    const stop = {
+      id: "n" + Date.now(),
+      day: at.day,
+      time: this.state.insTime.trim() || "—",
+      dur: "1h",
+      name,
+      area: "TBD",
+      cat: "Plan",
+      lat, lng,
+      cost: 0,
+      by: "lynn",
+      votes: [],
+      comments: []
+    };
+    let pos;
+    if (next) pos = this.state.stops.indexOf(next);
+    else if (prev) pos = this.state.stops.indexOf(prev) + 1;
+    else pos = this.state.stops.length;
+    const stops = this.state.stops.slice();
+    stops.splice(pos, 0, stop);
+    this.setState({ stops, insertAt: null, insName: "", insTime: "" });
+  }
+
+  toggleVote(id) {
+    this.setState({
+      stops: this.state.stops.map((s) => {
+        if (s.id !== id) return s;
+        const has = s.votes.indexOf("lynn") >= 0;
+        return Object.assign({}, s, { votes: has ? s.votes.filter((v) => v !== "lynn") : s.votes.concat("lynn") });
+      })
+    });
+  }
+
+  postComment() {
+    const text = this.state.draft.trim();
+    if (!text || !this.state.selStop) return;
+    this.setState({
+      draft: "",
+      stops: this.state.stops.map((s) =>
+        s.id === this.state.selStop
+          ? Object.assign({}, s, { comments: s.comments.concat({ by: "lynn", time: "Just now", text }) })
+          : s
+      )
+    });
+  }
+
+  addExpense() {
+    const amount = parseFloat(this.state.expAmount);
+    const desc = this.state.expDesc.trim();
+    const parts = this.members.map((m) => m.id).filter((id) => this.state.expParts[id]);
+    if (!desc || !(amount > 0) || parts.length === 0) return;
+    this.setState({
+      expenses: this.state.expenses.concat({
+        id: "e" + (this.state.expenses.length + 1) + "-" + Date.now(),
+        desc, payer: this.state.expPayer, amount: Math.round(amount), parts, when: "Just added"
+      }),
+      expDesc: "", expAmount: "", expOpen: false
+    });
+  }
+}
+</script>
+</body>
+</html>

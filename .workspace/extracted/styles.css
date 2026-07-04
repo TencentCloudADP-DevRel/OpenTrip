@@ -1,0 +1,63 @@
+/* cossUI — global stylesheet entry
+ * ----------------------------------------------------------------------------
+ * The single file consumers link. Imports only; tokens + font-faces live in
+ * the files below. Order: fonts → colors → typography → spacing.
+ */
+
+@import "./tokens/fonts.css";
+@import "./tokens/colors.css";
+@import "./tokens/typography.css";
+@import "./tokens/spacing.css";
+
+/* Minimal base so specimens & kits inherit the brand voice without a reset
+   library. Components themselves stay self-contained. */
+:root {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
+}
+
+/* Font smoothing — macOS renders type heavy; antialias at the root so all text
+   is crisp and even (other platforms ignore these). */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--foreground);
+  background: var(--background);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Text wrapping — balance short headings (no orphans, even lines); pretty for
+   short-to-medium body so the last line is never a lone word. */
+h1, h2, h3, h4 {
+  text-wrap: balance;
+}
+p, li, figcaption, blockquote, dd {
+  text-wrap: pretty;
+}
+
+/* Numerics & code — Paper Mono, tabular figures so changing numbers (times,
+   counters, prices) never shift layout. */
+code, kbd, samp, pre {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Image outlines — a neutral 1px separator for consistent depth. PURE black /
+   white only (never a tinted ink) so the edge never reads as dirt; inset via
+   negative offset so it adds no layout size. */
+img {
+  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline-offset: -1px;
+}
+.dark img {
+  outline-color: rgba(255, 255, 255, 0.1);
+}

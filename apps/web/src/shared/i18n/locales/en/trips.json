@@ -1,0 +1,17 @@
+{
+  "title": "Your trips",
+  "subtitle": "Shared itineraries, votes, and expenses — all in one place.",
+  "status": {
+    "active": "Active",
+    "planning": "Planning",
+    "settled": "Settled"
+  },
+  "card": {
+    "dates": "{{start}} – {{end}}",
+    "members_one": "{{count}} traveler",
+    "members_other": "{{count}} travelers",
+    "stops_one": "{{count}} stop",
+    "stops_other": "{{count}} stops",
+    "open": "Open planner"
+  }
+}
