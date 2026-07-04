@@ -34,7 +34,7 @@ export function Checkbox({
           type="checkbox"
           checked={checked}
           onChange={(e) => onCheckedChange(e.target.checked)}
-          className="peer absolute inset-0 cursor-pointer appearance-none rounded-sm border border-input bg-card outline-none checked:border-brand checked:bg-brand focus-visible:ring-[3px] focus-visible:ring-ring/40 transition-colors duration-150"
+          className="peer absolute inset-0 cursor-pointer appearance-none rounded-sm border border-input bg-card outline-none checked:border-brand checked:bg-brand transition-colors duration-150"
         />
         <svg
           viewBox="0 0 24 24"

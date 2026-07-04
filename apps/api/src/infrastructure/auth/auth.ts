@@ -8,6 +8,7 @@ export function createAuth(config: AppConfig, pool: Pool) {
     database: pool,
     secret: config.betterAuthSecret,
     baseURL: config.betterAuthUrl,
+    basePath: "/api/auth",
     trustedOrigins: config.trustedOrigins,
     emailAndPassword: { enabled: true },
   });

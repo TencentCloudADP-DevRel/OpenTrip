@@ -11,12 +11,30 @@ The wrapper lives at `apps/web/src/shared/ui/map` and reproduces the prototype's
   stops={stops}         // MapStop[]
   day={day}             // 0 = all days, or 1..N
   activeStopId={id}     // focused stop
-  showLegend
   onSelectStop={(id) => ...}
+  picking={picking}     // point-picking mode
+  onPick={(lng, lat) => ...}
+  onContext={(lng, lat) => ...} // right-click / long-press coordinate
 />
 ```
 
 `MapStop`: `{ id, name, lat, lng, day, color, num, transit }`.
+
+## Point picking
+
+When `picking` is true the canvas cursor becomes a pushpin and the next map
+click resolves to a coordinate via `onPick(lng, lat)`. The planner uses this to
+let users place a stop on the map instead of typing its name; the coordinate is
+reverse-geocoded (Photon) to prefill a name and area. See
+[../reference/frontend-sources.md](../reference/frontend-sources.md) for the
+geocoding source.
+
+## Context menu
+
+`TripMap` reports right-click / long-press coordinates via `onContext(lng, lat)`.
+`TripMapView` wraps the canvas in the coss `ContextMenu` primitive (Base UI) and
+offers pointer-anchored actions: **Add a stop here** (opens the schedule composer
+pre-filled at that point, reverse-geocoded for a name) and **Copy coordinates**.
 
 ## Behavior
 

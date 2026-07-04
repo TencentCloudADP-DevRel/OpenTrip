@@ -22,8 +22,21 @@ Pages may hold page-specific state and data fetching (Pages First).
 
 ## widgets
 
-Reusable composite blocks used by more than one page. Kept minimal in this
-iteration; most planner blocks stay page-private until reuse emerges.
+Reusable composite blocks used by more than one page:
+
+- `widgets/app-sidebar` — the persistent left sidebar shared by both pages.
+  Pins a brand (or a page-provided `top`, e.g. the planner's back + trip title)
+  above a scrollable content slot, with the account menu docked at the bottom.
+  The trips page fills it with nav (new trip); the planner injects its itinerary.
+  It is the base layer: pages set the shell background to the sidebar color and
+  float the main panel above it with rounded left corners + a left shadow. A
+  collapse control sits at the sidebar's top-right; collapsing hides it and shows
+  a floating expand control over the panel. The state persists in localStorage.
+- `widgets/user-menu` — avatar trigger docked at the sidebar bottom. Opens an
+  upward popover holding account info, the language switch, and sign out.
+
+There is no top bar; global chrome lives in the sidebar. Most planner blocks
+stay page-private under `pages/travel-planner/ui` until reuse emerges.
 
 ## features
 

@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS stops (
   cost       integer NOT NULL DEFAULT 0,
   created_by text NOT NULL,
   transit    boolean NOT NULL DEFAULT false,
+  note       text NOT NULL DEFAULT '',
   sort_order integer NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS stops_trip_idx ON stops(trip_id);

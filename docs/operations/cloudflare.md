@@ -35,7 +35,6 @@ DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DBNAME" pnpm db:seed
 ```bash
 cd deploy/cloudflare
 wrangler secret put BETTER_AUTH_SECRET --config wrangler.api.jsonc
-wrangler secret put BETTER_AUTH_URL --config wrangler.api.jsonc
 wrangler check --config wrangler.api.jsonc
 wrangler types --config wrangler.api.jsonc
 wrangler deploy --config wrangler.api.jsonc
@@ -47,7 +46,7 @@ wrangler deploy --config wrangler.api.jsonc
 ## 4. Frontend (Pages)
 
 ```bash
-VITE_API_BASE_URL="https://<api-worker-domain>" pnpm --filter @wayfare/web build
+BASE_URL="https://<api-worker-domain>" pnpm --filter @wayfare/web build
 wrangler pages deploy apps/web/dist --project-name wayfare-web
 ```
 
@@ -57,8 +56,8 @@ See [deploy/cloudflare/pages.md](../../deploy/cloudflare/pages.md).
 
 Only key names are committed, in
 [deploy/cloudflare/secrets.example.json](../../deploy/cloudflare/secrets.example.json).
-Set real values with `wrangler secret put`. Set `TRUSTED_ORIGINS` (as a var) to
-the Pages origin so auth CSRF checks pass.
+Set real secret values with `wrangler secret put`. Set `BASE_URL` (Worker
+origin) and `TRUSTED_ORIGINS` (Pages origin) as vars so auth CSRF checks pass.
 
 ## Rollback
 

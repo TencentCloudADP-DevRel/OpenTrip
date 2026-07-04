@@ -6,9 +6,9 @@ export interface AppConfig {
 }
 
 interface RawEnv {
+  BASE_URL?: string;
   DATABASE_URL?: string;
   BETTER_AUTH_SECRET?: string;
-  BETTER_AUTH_URL?: string;
   TRUSTED_ORIGINS?: string;
 }
 
@@ -23,11 +23,14 @@ export function loadConfig(env: RawEnv, connectionString?: string): AppConfig {
     throw new Error("BETTER_AUTH_SECRET must be set and at least 32 characters");
   }
 
+  const baseUrl = env.BASE_URL;
+  if (!baseUrl) throw new Error("BASE_URL is required");
+
   return {
     databaseUrl,
     betterAuthSecret,
-    betterAuthUrl: env.BETTER_AUTH_URL ?? "http://localhost:8787",
-    trustedOrigins: (env.TRUSTED_ORIGINS ?? "http://localhost:5173")
+    betterAuthUrl: baseUrl,
+    trustedOrigins: (env.TRUSTED_ORIGINS ?? baseUrl)
       .split(",")
       .map((o) => o.trim())
       .filter(Boolean),

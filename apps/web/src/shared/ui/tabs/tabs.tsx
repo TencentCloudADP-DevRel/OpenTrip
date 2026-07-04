@@ -40,7 +40,7 @@ export function Tabs({
             aria-selected={selected}
             onClick={() => onValueChange(item.value)}
             className={cn(
-              "h-7 rounded-md px-3 text-xs font-medium transition-[background-color,color,box-shadow] duration-150 active:scale-[0.96]",
+              "h-7 flex-1 rounded-md px-3 text-xs font-medium transition-[background-color,color,box-shadow] duration-150 active:scale-[0.96]",
               selected
                 ? "bg-card text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground",

@@ -26,13 +26,12 @@ DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DBNAME" pnpm db:seed
 # 3. API (Workers)
 cd deploy/cloudflare
 wrangler secret put BETTER_AUTH_SECRET --config wrangler.api.jsonc
-wrangler secret put BETTER_AUTH_URL   --config wrangler.api.jsonc
 wrangler deploy --config wrangler.api.jsonc
 
 # 4. Frontend (Pages)
-VITE_API_BASE_URL="https://<api-worker-domain>" pnpm --filter @wayfare/web build
+BASE_URL="https://<api-worker-domain>" pnpm --filter @wayfare/web build
 wrangler pages deploy apps/web/dist --project-name wayfare-web
 ```
 
 Set `TRUSTED_ORIGINS` (var in `wrangler.api.jsonc`) to the Pages origin so auth
-CSRF checks pass, and `BETTER_AUTH_URL` to the Worker's public URL.
+CSRF checks pass, and `BASE_URL` to the Worker's public URL.

@@ -15,8 +15,8 @@ only through aggregate methods.
   isCurrentUser }`.
 - **TripDay** — `{ number, dateLabel, city, color }`.
 - **Stop** (entity) — `{ id, day, time, duration, name, area, category,
-  lat, lng, cost, createdBy, transit, votes: MemberId[], comments: Comment[],
-  order }`.
+  lat, lng, cost, createdBy, transit, note, votes: MemberId[],
+  comments: Comment[], order }`. `note` is optional Markdown.
 - **Comment** (value object) — `{ author, timeLabel, text }`.
 - **Expense** (entity) — `{ id, description, payer, amount, participants,
   whenLabel }`.
@@ -31,8 +31,15 @@ only through aggregate methods.
 - **addComment(stopId, memberId, text)** — trimmed non-empty text is appended
   as a `Comment`; empty text is rejected.
 - **insertStop(day, index, draft)** — inserts a stop at a position within a
-  day. Coordinates interpolate from neighbors, or fall back to the day center.
+  day. Coordinates interpolate from neighbors, or fall back to the day center
+  (or use `draft.lat/lng` when provided). Optional `category`, `cost`, and
+  `note` default to `Plan`, `0`, and empty.
   Ordering is preserved across the whole trip.
+- **create(draft, owner)** — new trip in `planning` status with the owner as its
+  first member, one empty day, and `startDate` set to today (ISO). Day labels are
+  derived from `startDate` on the read side, so days carry no fake "Day N" text.
+- **addDay()** — appends an empty day with the next number and a cycled color;
+  its calendar date is derived from `startDate`.
 - **addExpense(draft)** — requires a positive amount, a payer, and >= 1
   participant; split is equal across participants.
 - **balances()** — for each member, `paid - fairShare` where `fairShare` sums
@@ -45,7 +52,8 @@ only through aggregate methods.
 
 Defined in `domain/trip/ports`:
 
-- `TripRepository` — `findSummaries()`, `findById(id)`, `save(trip)`.
+- `TripRepository` — `findSummaries()`, `findById(id)`, `create(trip)`,
+  `rename(id, title)`, `addDay(tripId, day)`, `save(trip)`.
 
 One repository per aggregate. Adapters live in `infrastructure/persistence`.
 

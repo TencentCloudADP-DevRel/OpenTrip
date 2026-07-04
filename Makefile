@@ -1,43 +1,155 @@
-.PHONY: dev dev-web dev-api check test lint format typecheck build docs deploy install help
+.DEFAULT_GOAL := help
+SHELL := /bin/bash
 
-install: ## Install all workspace dependencies
-	@pnpm install
+COMPOSE_FILE ?= deploy/docker/compose.yaml
+POSTGRES_PORT ?= 5432
+POSTGRES_USER ?= wayfare
+POSTGRES_DB ?= wayfare
 
-dev: ## Start web + api dev servers together (creates apps/api/.env if missing)
-	@test -f apps/api/.env || (cp apps/api/.env.example apps/api/.env && echo "Created apps/api/.env from example — edit it if needed.")
-	@pnpm dev
+.PHONY: help install env setup postgres-up postgres-down dev dev-nodb dev-web dev-api
+.PHONY: db-init db-migrate db-seed
+.PHONY: deploy-up deploy-down deploy-logs
+.PHONY: build test lint typecheck check docs clean deploy
 
-dev-web: ## Start only the web dev server (Vite, proxies /api to :8787)
-	@pnpm --filter @wayfare/web dev
+help:
+	@echo "wayfare Makefile targets:"
+	@echo ""
+	@echo "Setup:"
+	@echo "  make install         Install dependencies with pnpm"
+	@echo "  make env             Create .env from .env.example if missing"
+	@echo "  make setup           Full setup: install + env + postgres + migrate + seed"
+	@echo ""
+	@echo "Docker (local Postgres):"
+	@echo "  make postgres-up     Start Postgres via docker compose (postgres service only)"
+	@echo "  make postgres-down   Stop Postgres container"
+	@echo ""
+	@echo "Docker (full stack):"
+	@echo "  make deploy-up       Build and start postgres + api + web"
+	@echo "  make deploy-down   Stop full docker compose stack"
+	@echo "  make deploy-logs     Follow api container logs"
+	@echo ""
+	@echo "Development:"
+	@echo "  make dev             Start Postgres + migrate + web + api dev servers"
+	@echo "  make dev-nodb        Start web + api only (skip Postgres startup)"
+	@echo "  make dev-web         Start Vite only (http://localhost:5173)"
+	@echo "  make dev-api         Start API only (http://localhost:8787)"
+	@echo ""
+	@echo "Database:"
+	@echo "  make db-init         Run migrations then seed demo data"
+	@echo "  make db-migrate      Apply SQL migrations"
+	@echo "  make db-seed         Load prototype seed data"
+	@echo ""
+	@echo "Build & QA:"
+	@echo "  make build           Build all packages"
+	@echo "  make test            Run tests"
+	@echo "  make lint            Run ESLint"
+	@echo "  make typecheck       Run TypeScript"
+	@echo "  make check           typecheck + lint + test + build"
+	@echo "  make docs            Validate documentation links"
+	@echo "  make clean           Remove build artifacts"
+	@echo ""
+	@echo "Deploy info:"
+	@echo "  make deploy          Print Cloudflare / Docker deployment pointers"
 
-dev-api: ## Start only the api dev server (Hono via tsx, port 8787)
-	@test -f apps/api/.env || cp apps/api/.env.example apps/api/.env
-	@pnpm --filter @wayfare/api dev
+install:
+	pnpm install
 
-check: ## Run all quality checks (typecheck + lint + test + build)
-	@pnpm check
+env: install
+	@if [ ! -f .env ]; then \
+		cp .env.example .env; \
+		echo "Created .env from .env.example"; \
+	else \
+		echo ".env already exists"; \
+	fi
 
-typecheck: ## Run TypeScript type checking across all packages
-	@pnpm typecheck
+setup: install env postgres-up db-init
+	@echo "Setup complete! Run 'make dev' to start development."
 
-test: ## Run tests across all packages
-	@pnpm test
+postgres-up:
+	@if node -e 'const net=require("net");const port=parseInt(process.env.POSTGRES_PORT||"$(POSTGRES_PORT)",10);const s=net.connect({port,host:"127.0.0.1"});s.setTimeout(500);s.on("connect",()=>{s.end();process.exit(0)});s.on("timeout",()=>{s.destroy();process.exit(1)});s.on("error",()=>{process.exit(1)});' >/dev/null 2>&1; then \
+		echo "Postgres already reachable on port $(POSTGRES_PORT); skipping container startup."; \
+	else \
+		echo "Starting Postgres (docker compose)..."; \
+		docker compose -f $(COMPOSE_FILE) up -d postgres; \
+		echo "Waiting for Postgres to become ready..."; \
+		for i in $$(seq 1 30); do \
+			if docker compose -f $(COMPOSE_FILE) exec -T postgres pg_isready -U $(POSTGRES_USER) -d $(POSTGRES_DB) >/dev/null 2>&1; then \
+				echo "Postgres is ready."; \
+				break; \
+			fi; \
+			if [ $$i -eq 30 ]; then \
+				echo "Postgres did not become ready in time."; \
+				exit 1; \
+			fi; \
+			sleep 1; \
+		done; \
+	fi
 
-lint: ## Run linter across all packages
-	@pnpm lint
+postgres-down:
+	@docker compose -f $(COMPOSE_FILE) stop postgres 2>/dev/null || true
+	@echo "Postgres stopped."
 
-format: ## Run formatter across all packages
-	@pnpm -r format
+dev: env postgres-up db-migrate
+	@echo "Starting web + api dev servers (Ctrl+C to stop)..."
+	@echo "  web  → http://localhost:5173  (proxies /api to :8787)"
+	@echo "  api  → http://localhost:8787"
+	pnpm dev
 
-build: ## Build all packages
-	@pnpm build
+dev-nodb: env
+	@echo "Starting web + api dev servers without Postgres startup (Ctrl+C to stop)..."
+	pnpm dev
 
-docs: ## Validate documentation links and structure
-	@pnpm docs:check
+dev-web: env
+	pnpm --filter @wayfare/web dev
 
-deploy: ## Deployment entry points
+dev-api: env postgres-up db-migrate
+	pnpm --filter @wayfare/api dev
+
+db-migrate:
+	pnpm db:migrate
+
+db-seed:
+	pnpm db:seed
+
+db-init: db-migrate db-seed
+	@echo "Database initialized."
+
+deploy-up:
+	@if [ ! -f deploy/docker/.env ]; then \
+		cp deploy/docker/.env.example deploy/docker/.env; \
+		echo "Created deploy/docker/.env — set BETTER_AUTH_SECRET before production use."; \
+	fi
+	docker compose -f $(COMPOSE_FILE) --env-file deploy/docker/.env up -d --build
+
+deploy-down:
+	docker compose -f $(COMPOSE_FILE) --env-file deploy/docker/.env down 2>/dev/null \
+		|| docker compose -f $(COMPOSE_FILE) down
+
+deploy-logs:
+	docker compose -f $(COMPOSE_FILE) logs -f api
+
+build:
+	pnpm build
+
+test:
+	pnpm test
+
+lint:
+	pnpm lint
+
+typecheck:
+	pnpm typecheck
+
+check:
+	pnpm check
+
+docs:
+	pnpm docs:check
+
+clean:
+	rm -rf apps/web/dist
+	@echo "Cleaned build artifacts."
+
+deploy:
 	@echo "Cloudflare: see deploy/cloudflare/README.md"
 	@echo "Docker:     see deploy/docker/README.md"
-
-help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'

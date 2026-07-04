@@ -1,12 +1,36 @@
 import type { Trip, TripSummary } from "@/entities/trip";
+import type { StopCategory } from "@/entities/stop";
 import { apiFetch } from "./client";
 
 export function fetchTrips(): Promise<TripSummary[]> {
   return apiFetch<TripSummary[]>("/api/trips");
 }
 
+export interface CreateTripInput {
+  title: string;
+  currency?: string;
+}
+
+export function createTrip(input: CreateTripInput): Promise<Trip> {
+  return apiFetch<Trip>("/api/trips", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function renameTrip(tripId: string, title: string): Promise<Trip> {
+  return apiFetch<Trip>(`/api/trips/${tripId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ title }),
+  });
+}
+
 export function fetchTrip(id: string): Promise<Trip> {
   return apiFetch<Trip>(`/api/trips/${id}`);
+}
+
+export function addTripDay(tripId: string): Promise<Trip> {
+  return apiFetch<Trip>(`/api/trips/${tripId}/days`, { method: "POST" });
 }
 
 export interface InsertStopInput {
@@ -14,6 +38,12 @@ export interface InsertStopInput {
   index: number;
   name: string;
   time: string;
+  lat?: number;
+  lng?: number;
+  area?: string;
+  category?: StopCategory;
+  cost?: number;
+  note?: string;
 }
 
 export function insertStop(tripId: string, input: InsertStopInput): Promise<Trip> {

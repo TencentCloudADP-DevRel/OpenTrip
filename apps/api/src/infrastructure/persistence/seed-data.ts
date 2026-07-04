@@ -117,6 +117,7 @@ function buildJapan(): SeedTrip {
     title: "Japan · Autumn",
     status: "active",
     currency: "JPY",
+    startDate: "",
     ownerId: "demo",
     members: members(),
     days: DAYS,
@@ -134,6 +135,7 @@ function buildJapan(): SeedTrip {
       createdBy: s.by,
       transit: !!s.transit,
       order: i,
+      note: "",
       votes: s.votes,
       comments: s.comments.map((c) => ({
         author: c.by,

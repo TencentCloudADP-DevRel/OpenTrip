@@ -24,10 +24,24 @@ semantic tokens, never raw palette values.
 
 Implemented in `apps/web/src/shared/ui`, matching cossUI APIs:
 
-`button`, `badge`, `input`, `checkbox`, `tabs`, `card` (+ parts), `avatar`,
-`spinner`. Each exposes a public `index.ts`. Variants/sizes come from props, not
-ad-hoc overrides. Icon-only buttons require `aria-label`; form controls set an
-explicit `type`.
+`button`, `badge`, `input`, `textarea`, `checkbox`, `tabs`, `card` (+ parts),
+`avatar`, `spinner`, `autocomplete`, `select`, `context-menu`. Each exposes a
+public `index.ts`.
+Variants/sizes come from props, not ad-hoc overrides. Icon-only buttons require
+`aria-label`; form controls set an explicit `type`.
+
+Stop notes are authored in a `textarea` (Markdown) and rendered in the stop
+detail via `react-markdown` (scoped `.wf-markdown` typography in `global.css`),
+which supports embedded images through standard Markdown image syntax.
+
+`autocomplete` and `select` are adapted from the coss components and built on
+Base UI (`@base-ui/react`). `autocomplete` powers the stop-name place search
+(async, relevance-sorted suggestions; use `mode="none"` with controlled
+`value`/`items` for server-driven results, and read the selected item on the
+`item-press` change reason). `select` provides the schedule time and date
+pickers (predefined options via the `items`-first pattern). `context-menu`
+powers the map's right-click actions (add a stop at the clicked point, copy
+coordinates).
 
 ## Interaction polish
 
@@ -40,7 +54,10 @@ From make-interfaces-feel-better, applied consistently:
 - Pressable controls use `active:scale-[0.96]`.
 - Small icon buttons keep a >= 40x40 hit area.
 - Concentric radius on nested surfaces; shadows over hard borders for elevated
-  surfaces; a 3px cornflower focus ring.
+  surfaces.
+- No focus glow/ring: the default focus outline is removed app-wide in
+  `global.css`, and interactive surfaces convey focus through hover, border, and
+  background changes (matching the Input/Autocomplete treatment).
 
 ## Accessibility
 

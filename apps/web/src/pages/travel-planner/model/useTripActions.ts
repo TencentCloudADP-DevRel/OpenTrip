@@ -3,6 +3,7 @@ import type { Trip } from "@/entities/trip";
 import {
   addComment,
   addExpense,
+  addTripDay,
   insertStop,
   toggleVote,
   type AddExpenseInput,
@@ -33,6 +34,10 @@ export function useTripActions(tripId: string) {
     mutationFn: (input: AddExpenseInput) => addExpense(tripId, input),
     onSuccess,
   });
+  const day = useMutation({
+    mutationFn: () => addTripDay(tripId),
+    onSuccess,
+  });
 
-  return { vote, comment, stop, expense };
+  return { vote, comment, stop, expense, day };
 }

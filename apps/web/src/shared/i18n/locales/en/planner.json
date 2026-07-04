@@ -1,4 +1,8 @@
 {
+  "header": {
+    "renameAria": "Rename trip",
+    "renamePlaceholder": "Trip name"
+  },
   "tabs": {
     "map": "Map",
     "schedule": "Schedule",
@@ -7,7 +11,8 @@
   "days": {
     "all": "All days",
     "day": "Day {{n}}",
-    "groupLabel": "Day {{n}} · {{date}}"
+    "groupLabel": "Day {{n}} · {{date}}",
+    "add": "Add day"
   },
   "itinerary": {
     "count_one": "{{count}} stop",
@@ -25,14 +30,44 @@
     "commentsWithCount": "Comments ({{count}})",
     "commentsEmpty": "Comments — start the discussion",
     "commentPlaceholder": "Add a comment…",
-    "justNow": "Just now"
+    "justNow": "Just now",
+    "notes": "Notes"
   },
   "schedule": {
     "insert": "Insert stop",
     "namePlaceholder": "Stop name",
     "timePlaceholder": "Time",
+    "datePlaceholder": "Date",
+    "moreOptions": "More options",
+    "categoryPlaceholder": "Type",
+    "costPlaceholder": "Est. cost ({{currency}})",
+    "notePlaceholder": "Notes — Markdown & images supported",
     "add": "Add",
     "voteCount": "▲ {{count}}"
+  },
+  "category": {
+    "Sight": "Sightseeing",
+    "Food": "Food",
+    "Stay": "Stay",
+    "Shopping": "Shopping",
+    "Activity": "Activity",
+    "Walk": "Walk",
+    "Park": "Park",
+    "Transit": "Transit",
+    "Plan": "Plan"
+  },
+  "pick": {
+    "onMap": "Pick on map",
+    "hint": "Click the map to drop a pin",
+    "searching": "Searching…",
+    "noResults": "No places found",
+    "located": "Located"
+  },
+  "map": {
+    "menu": {
+      "addStop": "Add a stop here",
+      "copyCoords": "Copy coordinates"
+    }
   },
   "budget": {
     "total": "Total",

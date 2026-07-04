@@ -11,6 +11,15 @@ export interface TripDay {
   color: string;
 }
 
+export interface TripSummaryMember {
+  id: string;
+  name: string;
+  initials: string;
+  avatarBg: string;
+  avatarFg: string;
+  isCurrentUser: boolean;
+}
+
 export interface TripSummary {
   id: string;
   title: string;
@@ -21,6 +30,12 @@ export interface TripSummary {
   coverColor: string;
   memberCount: number;
   stopCount: number;
+  /** Creation time as an ISO 8601 string. */
+  createdAt: string;
+  /** Display name of the trip creator. */
+  creatorName: string;
+  /** Members ordered with the creator first, for a stacked avatar cluster. */
+  members: TripSummaryMember[];
 }
 
 export interface Trip {
@@ -28,6 +43,9 @@ export interface Trip {
   title: string;
   status: TripStatus;
   currency: string;
+  /** ISO `YYYY-MM-DD` start date, or "" when unknown. Day calendar dates are
+   * derived from this by offsetting each day by (number - 1). */
+  startDate: string;
   members: TripMember[];
   days: TripDay[];
   stops: Stop[];

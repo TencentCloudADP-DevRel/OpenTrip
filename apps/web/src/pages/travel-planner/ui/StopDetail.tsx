@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import ReactMarkdown from "react-markdown";
 import type { Trip } from "@/entities/trip";
 import type { Stop } from "@/entities/stop";
 import type { TripMember } from "@/entities/member";
@@ -92,6 +93,30 @@ export function StopDetail({
         <p className="text-xs text-muted-foreground">
           {t("detail.addedBy", { name: addedBy.shortName })}
         </p>
+
+        {stop.note ? (
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold">{t("detail.notes")}</h3>
+            <div className="wf-markdown text-sm leading-relaxed text-foreground/90">
+              <ReactMarkdown
+                components={{
+                  a: ({ node, ...props }) => {
+                    void node;
+                    return (
+                      <a {...props} target="_blank" rel="noreferrer noopener" />
+                    );
+                  },
+                  img: ({ node, ...props }) => {
+                    void node;
+                    return <img {...props} alt={props.alt ?? ""} loading="lazy" />;
+                  },
+                }}
+              >
+                {stop.note}
+              </ReactMarkdown>
+            </div>
+          </div>
+        ) : null}
 
         <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/50 p-3">
           <div className="flex items-center">

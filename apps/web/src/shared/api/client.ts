@@ -25,7 +25,7 @@ export async function apiFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(`${config.apiBaseUrl}${path}`, {
+  const res = await fetch(`${config.baseUrl}${path}`, {
     ...init,
     credentials: "include",
     headers: {

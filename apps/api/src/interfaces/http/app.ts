@@ -14,14 +14,41 @@ interface Env {
   };
 }
 
+const stopCategorySchema = z.enum([
+  "Sight",
+  "Food",
+  "Stay",
+  "Shopping",
+  "Activity",
+  "Walk",
+  "Park",
+  "Transit",
+  "Plan",
+]);
+
 const insertStopSchema = z.object({
   day: z.number().int().positive(),
   index: z.number().int().min(0),
   name: z.string().min(1),
   time: z.string(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  area: z.string().max(120).optional(),
+  category: stopCategorySchema.optional(),
+  cost: z.number().min(0).max(100_000_000).optional(),
+  note: z.string().max(20_000).optional(),
 });
 
 const commentSchema = z.object({ text: z.string().min(1) });
+
+const createTripSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  currency: z.string().trim().min(1).max(8).optional(),
+});
+
+const renameTripSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+});
 
 const expenseSchema = z.object({
   description: z.string().min(1),
@@ -66,8 +93,27 @@ export function createApp(container: Container) {
 
   guard.get("/trips", async (c) => ok(c, await tripService.listTrips()));
 
+  guard.post("/trips", async (c) => {
+    const user = c.get("user")!;
+    const input = createTripSchema.parse(await c.req.json());
+    const dto = await tripService.createTrip(input, {
+      id: user.id,
+      name: user.name || user.email,
+    });
+    return ok(c, dto, 201);
+  });
+
   guard.get("/trips/:id", async (c) =>
     ok(c, await tripService.getTrip(c.req.param("id"))),
+  );
+
+  guard.patch("/trips/:id", async (c) => {
+    const { title } = renameTripSchema.parse(await c.req.json());
+    return ok(c, await tripService.renameTrip(c.req.param("id"), title));
+  });
+
+  guard.post("/trips/:id/days", async (c) =>
+    ok(c, await tripService.addDay(c.req.param("id")), 201),
   );
 
   guard.post("/trips/:id/stops", async (c) => {

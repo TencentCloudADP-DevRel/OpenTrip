@@ -1,50 +1,167 @@
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
-import { fetchTrips } from "@/shared/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createTrip, fetchTrips } from "@/shared/api";
 import { queryKeys } from "@/shared/config";
-import { AppHeader } from "@/widgets/app-header";
+import { AppSidebar } from "@/widgets/app-sidebar";
 import { Spinner } from "@/shared/ui/spinner";
 import { useRouter } from "@/app/router";
 import { TripCard } from "./ui/TripCard";
 
+/** Placeholder title for an instantly-created trip. Users rename it later. */
+function defaultTripName(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `new-${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
 export function TripsPage() {
   const { t } = useTranslation("trips");
   const { navigate } = useRouter();
+  const queryClient = useQueryClient();
+
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: queryKeys.trips,
     queryFn: fetchTrips,
   });
 
-  return (
-    <div className="min-h-dvh bg-background">
-      <AppHeader />
-      <main className="mx-auto w-full max-w-5xl px-4 py-8 md:px-6 md:py-12">
-        <div className="mb-8 flex flex-col gap-1">
-          <h1 className="text-3xl font-semibold tracking-[-0.02em]">
-            {t("title")}
-          </h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
+  const create = useMutation({
+    mutationFn: () => createTrip({ title: defaultTripName() }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.trips });
+    },
+  });
 
-        {isPending ? (
-          <div className="flex justify-center py-16">
-            <Spinner className="size-6" />
+  const creating = create.isPending;
+
+  return (
+    <div className="flex h-dvh bg-sidebar">
+      <AppSidebar>
+        <nav className="flex flex-col px-2.5 pt-1">
+          <button
+            type="button"
+            onClick={() => create.mutate()}
+            disabled={creating}
+            className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-semibold transition-colors duration-100 hover:bg-accent disabled:opacity-50"
+          >
+            {creating ? (
+              <Spinner className="size-4 text-corn-600" />
+            ) : (
+              <svg
+                viewBox="0 0 24 24"
+                className="size-4 text-corn-600"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+              </svg>
+            )}
+            {t("newTrip")}
+          </button>
+        </nav>
+      </AppSidebar>
+
+      <main className="min-w-0 flex-1 overflow-y-auto rounded-l-2xl border border-r-0 border-border bg-background shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25)]">
+        <div className="mx-auto w-full max-w-5xl px-4 py-8 md:px-6 md:py-12">
+          <div className="mb-8 flex flex-col gap-1">
+            <h1 className="text-3xl font-semibold tracking-[-0.02em]">
+              {t("title")}
+            </h1>
+            <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
-        ) : isError ? (
-          <ErrorState onRetry={() => void refetch()} />
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {data.map((trip, i) => (
-              <TripCard
-                key={trip.id}
-                trip={trip}
-                index={i}
-                onOpen={() => navigate(`/trips/${trip.id}`)}
-              />
-            ))}
-          </div>
-        )}
+
+          {isPending ? (
+            <div className="flex justify-center py-16">
+              <Spinner className="size-6" />
+            </div>
+          ) : isError ? (
+            <ErrorState onRetry={() => void refetch()} />
+          ) : data.length === 0 && !creating ? (
+            <EmptyState onCreate={() => create.mutate()} />
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {creating && <SkeletonCard />}
+              {data.map((trip, i) => (
+                <TripCard
+                  key={trip.id}
+                  trip={trip}
+                  index={i}
+                  onOpen={() => navigate(`/trips/${trip.id}`)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </main>
+    </div>
+  );
+}
+
+function EmptyState({ onCreate }: { onCreate: () => void }) {
+  const { t } = useTranslation("trips");
+  return (
+    <div className="relative min-h-[520px]">
+      {/* Faint skeleton grid hints at the card layout behind the CTA. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none grid select-none grid-cols-1 gap-4 opacity-70 [mask-image:linear-gradient(to_bottom,#000_0%,#000_35%,transparent_88%)] sm:grid-cols-2 lg:grid-cols-3"
+      >
+        {Array.from({ length: 6 }).map((_, i) => (
+          <SkeletonCard key={i} />
+        ))}
+      </div>
+
+      <div className="absolute inset-0 flex items-center justify-center p-2">
+        <div className="flex w-full max-w-[520px] flex-col items-center gap-5">
+          <p className="text-base font-semibold">{t("empty.title")}</p>
+          <button
+            type="button"
+            onClick={onCreate}
+            className="wf-enter group flex w-full items-center gap-3 rounded-xl border border-border bg-card/85 px-3.5 py-3 text-left shadow-sm backdrop-blur-md transition-colors duration-150 hover:bg-accent"
+          >
+            <span className="flex size-10 flex-none items-center justify-center rounded-lg bg-accent text-corn-600 transition-colors group-hover:bg-brand-muted">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+              </svg>
+            </span>
+            <span className="flex min-w-0 flex-col">
+              <span className="text-sm font-semibold">{t("newTrip")}</span>
+              <span className="text-xs text-muted-foreground">
+                {t("empty.subtitle")}
+              </span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Non-interactive placeholder matching the TripCard silhouette. */
+function SkeletonCard() {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="h-24 w-full animate-pulse bg-muted" />
+      <div className="flex flex-col gap-3 p-5">
+        <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
+        <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
+        <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+      </div>
     </div>
   );
 }

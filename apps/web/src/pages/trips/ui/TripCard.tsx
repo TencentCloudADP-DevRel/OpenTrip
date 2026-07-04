@@ -2,7 +2,11 @@ import { useTranslation } from "react-i18next";
 import type { TripSummary } from "@/entities/trip";
 import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
-import { cn } from "@/shared/lib";
+import { Avatar } from "@/shared/ui/avatar";
+import { cn, formatRelativeTime } from "@/shared/lib";
+
+/** Max avatars shown before collapsing the rest into a "+N" chip. */
+const MAX_AVATARS = 4;
 
 const STATUS_VARIANT = {
   active: "brand",
@@ -19,7 +23,13 @@ export function TripCard({
   index: number;
   onOpen: () => void;
 }) {
-  const { t } = useTranslation("trips");
+  const { t, i18n } = useTranslation("trips");
+
+  const shown = trip.members.slice(0, MAX_AVATARS);
+  const overflow = trip.members.length - shown.length;
+  const when = trip.createdAt
+    ? formatRelativeTime(trip.createdAt, i18n.language)
+    : "";
 
   return (
     <Card
@@ -50,17 +60,41 @@ export function TripCard({
             {t(`status.${trip.status}`)}
           </Badge>
         </div>
-        <p className="font-mono text-sm text-muted-foreground tabular-nums">
-          {t("card.dates", { start: trip.startLabel, end: trip.endLabel })}
-        </p>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="tabular-nums">
-            {t("card.members", { count: trip.memberCount })}
-          </span>
-          <span aria-hidden="true">·</span>
-          <span className="tabular-nums">
-            {t("card.stops", { count: trip.stopCount })}
-          </span>
+        {(trip.startLabel || trip.endLabel) && (
+          <p className="font-mono text-sm text-muted-foreground tabular-nums">
+            {t("card.dates", { start: trip.startLabel, end: trip.endLabel })}
+          </p>
+        )}
+        <div className="flex items-center gap-2.5">
+          {shown.length > 0 ? (
+            <div className="flex flex-none items-center">
+              {shown.map((m, i) => (
+                <Avatar
+                  key={m.id}
+                  initials={m.initials}
+                  name={m.name}
+                  bg={m.avatarBg}
+                  fg={m.avatarFg}
+                  size={24}
+                  stackIndex={i}
+                  zIndex={shown.length - i}
+                />
+              ))}
+              {overflow > 0 ? (
+                <span
+                  className="-ml-[7px] inline-flex size-6 flex-none items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground ring-2 ring-card"
+                  title={t("card.moreMembers", { count: overflow })}
+                >
+                  +{overflow}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+          {trip.creatorName ? (
+            <p className="min-w-0 truncate text-xs text-muted-foreground">
+              {t("card.createdBy", { name: trip.creatorName, when })}
+            </p>
+          ) : null}
         </div>
         <span
           className={cn(

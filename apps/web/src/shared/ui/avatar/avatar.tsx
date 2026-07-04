@@ -8,6 +8,8 @@ export interface AvatarProps {
   size?: number;
   /** Stacked index: >0 applies a negative margin + card ring for clustering. */
   stackIndex?: number;
+  /** Explicit paint order within a stack (higher sits on top). */
+  zIndex?: number;
   className?: string;
 }
 
@@ -18,6 +20,7 @@ export function Avatar({
   fg,
   size = 26,
   stackIndex,
+  zIndex,
   className,
 }: AvatarProps) {
   const stacked = stackIndex != null;
@@ -37,6 +40,7 @@ export function Avatar({
         background: bg,
         color: fg,
         marginLeft: stacked && stackIndex > 0 ? -7 : 0,
+        zIndex,
       }}
     >
       {initials}

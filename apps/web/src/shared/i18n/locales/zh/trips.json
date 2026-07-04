@@ -1,6 +1,11 @@
 {
   "title": "我的行程",
   "subtitle": "共享行程、投票与花费，尽在一处。",
+  "newTrip": "新建行程",
+  "empty": {
+    "title": "还没有行程",
+    "subtitle": "创建第一个行程，开始规划路线、投票与分摊花费。"
+  },
   "status": {
     "active": "进行中",
     "planning": "规划中",
@@ -10,6 +15,8 @@
     "dates": "{{start}} – {{end}}",
     "members_other": "{{count}} 位同行者",
     "stops_other": "{{count}} 个地点",
+    "createdBy": "{{name}} 在{{when}}创建",
+    "moreMembers": "还有 {{count}} 位",
     "open": "打开规划"
   }
 }

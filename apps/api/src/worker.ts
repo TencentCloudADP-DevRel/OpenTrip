@@ -3,8 +3,8 @@ import { createApp } from "./interfaces/http/app";
 
 interface WorkerEnv {
   HYPERDRIVE: { connectionString: string };
+  BASE_URL?: string;
   BETTER_AUTH_SECRET: string;
-  BETTER_AUTH_URL?: string;
   TRUSTED_ORIGINS?: string;
 }
 

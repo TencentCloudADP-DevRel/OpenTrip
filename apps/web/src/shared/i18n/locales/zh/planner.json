@@ -1,4 +1,8 @@
 {
+  "header": {
+    "renameAria": "重命名行程",
+    "renamePlaceholder": "行程名称"
+  },
   "tabs": {
     "map": "地图",
     "schedule": "日程",
@@ -7,7 +11,8 @@
   "days": {
     "all": "全部日期",
     "day": "第 {{n}} 天",
-    "groupLabel": "第 {{n}} 天 · {{date}}"
+    "groupLabel": "第 {{n}} 天 · {{date}}",
+    "add": "添加一天"
   },
   "itinerary": {
     "count_other": "{{count}} 个地点"
@@ -24,14 +29,44 @@
     "commentsWithCount": "评论（{{count}}）",
     "commentsEmpty": "评论 — 开启讨论",
     "commentPlaceholder": "添加评论…",
-    "justNow": "刚刚"
+    "justNow": "刚刚",
+    "notes": "备注"
   },
   "schedule": {
     "insert": "插入地点",
     "namePlaceholder": "地点名称",
     "timePlaceholder": "时间",
+    "datePlaceholder": "日期",
+    "moreOptions": "更多选项",
+    "categoryPlaceholder": "类型",
+    "costPlaceholder": "预计花费（{{currency}}）",
+    "notePlaceholder": "备注 — 支持 Markdown 与图片",
     "add": "添加",
     "voteCount": "▲ {{count}}"
+  },
+  "category": {
+    "Sight": "观光",
+    "Food": "餐饮",
+    "Stay": "住宿",
+    "Shopping": "购物",
+    "Activity": "活动",
+    "Walk": "步行",
+    "Park": "公园",
+    "Transit": "交通",
+    "Plan": "计划"
+  },
+  "pick": {
+    "onMap": "在地图上选点",
+    "hint": "点击地图放置图钉",
+    "searching": "搜索中…",
+    "noResults": "未找到地点",
+    "located": "已定位"
+  },
+  "map": {
+    "menu": {
+      "addStop": "在此添加地点",
+      "copyCoords": "复制坐标"
+    }
   },
   "budget": {
     "total": "总计",

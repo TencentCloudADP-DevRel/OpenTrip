@@ -2,7 +2,9 @@ import { DomainError } from "../shared/errors";
 import { computeBudget } from "./settlement";
 import type {
   Budget,
+  DaySnapshot,
   ExpenseSnapshot,
+  StopCategory,
   StopSnapshot,
   TripSnapshot,
 } from "./types";
@@ -13,6 +15,18 @@ export interface InsertStopDraft {
   index: number;
   name: string;
   time: string;
+  /** Real coordinates from geocoding or a map pick. When absent, the stop's
+   * position is interpolated from its neighbours. */
+  lat?: number;
+  lng?: number;
+  /** Optional area/context label from geocoding. */
+  area?: string;
+  /** Optional activity type. Defaults to "Plan" when omitted. */
+  category?: StopCategory;
+  /** Optional estimated cost per person, in the trip's minor currency units. */
+  cost?: number;
+  /** Optional free-form note (Markdown, may embed image URLs). */
+  note?: string;
 }
 
 export interface AddExpenseDraft {
@@ -20,6 +34,59 @@ export interface AddExpenseDraft {
   amount: number;
   payer: string;
   participants: string[];
+}
+
+export interface CreateTripDraft {
+  title: string;
+  currency?: string;
+}
+
+export interface TripOwner {
+  id: string;
+  name: string;
+}
+
+/** Avatar palette for auto-created members, cycling by a stable index. */
+const MEMBER_PALETTE: Array<{ bg: string; fg: string }> = [
+  { bg: "#dde7fb", fg: "#2b4d93" },
+  { bg: "#dde2ee", fg: "#3c4760" },
+  { bg: "#d9efe6", fg: "#1f6b4d" },
+  { bg: "#f3e8d3", fg: "#7a5a1e" },
+];
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+}
+
+function shortNameOf(name: string): string {
+  return name.trim().split(/\s+/).filter(Boolean)[0] ?? name.trim();
+}
+
+/** Palette for itinerary days, cycled by day number. */
+const DAY_COLORS = [
+  "#3f6fc9",
+  "#305bb0",
+  "#28304a",
+  "#3c8f6f",
+  "#6d788f",
+  "#8a5cc0",
+  "#c06a3c",
+];
+
+function dayColorFor(number: number): string {
+  return DAY_COLORS[(number - 1) % DAY_COLORS.length]!;
+}
+
+/** Today's date as an ISO `YYYY-MM-DD` string (server local time). */
+function todayIso(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 const DAY_CENTERS: Record<number, [number, number]> = {
@@ -43,6 +110,38 @@ export class Trip {
         (a, b) => a.createdOrder - b.createdOrder,
       ),
     });
+  }
+
+  /** Create a fresh trip owned by the given user, who becomes its first member.
+   * Starts with a single empty day and no stops/expenses. */
+  static create(draft: CreateTripDraft, owner: TripOwner): Trip {
+    const title = draft.title.trim();
+    if (!title) throw new DomainError("empty_trip_title", "Trip title is required");
+
+    const palette = MEMBER_PALETTE[0]!;
+    const snapshot: TripSnapshot = {
+      id: `t${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      title,
+      status: "planning",
+      currency: draft.currency?.trim() || "JPY",
+      startDate: todayIso(),
+      ownerId: owner.id,
+      members: [
+        {
+          id: owner.id,
+          name: owner.name,
+          shortName: shortNameOf(owner.name),
+          initials: initialsOf(owner.name),
+          avatarBg: palette.bg,
+          avatarFg: palette.fg,
+          isCurrentUser: true,
+        },
+      ],
+      days: [{ number: 1, dateLabel: "", city: "", color: dayColorFor(1) }],
+      stops: [],
+      expenses: [],
+    };
+    return new Trip(snapshot);
   }
 
   get id(): string {
@@ -102,20 +201,35 @@ export class Trip {
     const next = dayStops[index];
     const center = DAY_CENTERS[draft.day] ?? [35.68, 139.75];
 
-    const lat = prev && next
-      ? (prev.lat + next.lat) / 2
-      : prev
-        ? prev.lat + 0.004
-        : next
-          ? next.lat - 0.004
-          : center[0];
-    const lng = prev && next
-      ? (prev.lng + next.lng) / 2
-      : prev
-        ? prev.lng + 0.004
-        : next
-          ? next.lng - 0.004
-          : center[1];
+    const hasCoords =
+      typeof draft.lat === "number" &&
+      typeof draft.lng === "number" &&
+      Number.isFinite(draft.lat) &&
+      Number.isFinite(draft.lng);
+
+    const lat = hasCoords
+      ? draft.lat!
+      : prev && next
+        ? (prev.lat + next.lat) / 2
+        : prev
+          ? prev.lat + 0.004
+          : next
+            ? next.lat - 0.004
+            : center[0];
+    const lng = hasCoords
+      ? draft.lng!
+      : prev && next
+        ? (prev.lng + next.lng) / 2
+        : prev
+          ? prev.lng + 0.004
+          : next
+            ? next.lng - 0.004
+            : center[1];
+
+    const cost =
+      typeof draft.cost === "number" && Number.isFinite(draft.cost) && draft.cost > 0
+        ? Math.round(draft.cost)
+        : 0;
 
     const stop: StopSnapshot = {
       id: `n${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -123,14 +237,15 @@ export class Trip {
       time: draft.time.trim() || "—",
       duration: "1h",
       name,
-      area: "TBD",
-      category: "Plan",
+      area: draft.area?.trim() || "TBD",
+      category: draft.category ?? "Plan",
       lat,
       lng,
-      cost: 0,
+      cost,
       createdBy,
       transit: false,
       order: 0,
+      note: draft.note?.trim() ?? "",
       votes: [],
       comments: [],
     };
@@ -169,6 +284,28 @@ export class Trip {
     };
     this.snapshot.expenses.push(expense);
     return expense;
+  }
+
+  /** Rename the trip. Title is trimmed and must be non-empty. */
+  rename(title: string): void {
+    const trimmed = title.trim();
+    if (!trimmed) throw new DomainError("empty_trip_title", "Trip title is required");
+    this.snapshot.title = trimmed;
+  }
+
+  /** Append a new empty day at the end of the itinerary and return it. Its
+   * calendar date is derived from the trip's start date on the read side. */
+  addDay(): DaySnapshot {
+    const nextNumber =
+      this.snapshot.days.reduce((max, d) => Math.max(max, d.number), 0) + 1;
+    const day: DaySnapshot = {
+      number: nextNumber,
+      dateLabel: "",
+      city: "",
+      color: dayColorFor(nextNumber),
+    };
+    this.snapshot.days.push(day);
+    return day;
   }
 
   /** The member flagged as the current user (demo mapping). */

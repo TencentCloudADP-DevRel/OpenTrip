@@ -13,7 +13,9 @@
     "signIn": "Sign in",
     "signOut": "Sign out",
     "cancel": "Cancel",
-    "close": "Close"
+    "close": "Close",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar"
   },
   "state": {
     "loading": "Loading…",

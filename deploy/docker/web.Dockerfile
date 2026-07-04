@@ -12,8 +12,8 @@ RUN pnpm install --filter @wayfare/web... --frozen-lockfile
 COPY tsconfig.base.json ./
 COPY apps/web ./apps/web
 
-ARG VITE_API_BASE_URL=""
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ARG BASE_URL
+ENV BASE_URL=$BASE_URL
 WORKDIR /app/apps/web
 RUN pnpm build
 

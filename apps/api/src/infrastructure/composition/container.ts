@@ -12,9 +12,9 @@ export interface Container {
 }
 
 interface RawEnv {
+  BASE_URL?: string;
   DATABASE_URL?: string;
   BETTER_AUTH_SECRET?: string;
-  BETTER_AUTH_URL?: string;
   TRUSTED_ORIGINS?: string;
 }
 

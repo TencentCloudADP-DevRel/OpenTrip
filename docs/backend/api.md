@@ -18,12 +18,22 @@ Hono routes under `apps/api/src/interfaces/http`. Reference:
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/health` | Liveness probe `{ data: { status: "ok" } }` |
-| GET | `/api/trips` | List trip summaries |
+| GET | `/api/trips` | List trip summaries; each carries `createdAt` (ISO), `creatorName`, and `members` (avatar fields, ordered creator-first) for the card's avatar stack and "created …" label |
+| POST | `/api/trips` | Create a trip `{ title, currency? }`; owner becomes first member |
 | GET | `/api/trips/:id` | Full trip (members, days, stops, expenses, budget) |
-| POST | `/api/trips/:id/stops` | Insert a stop `{ day, index, name, time }` |
+| PATCH | `/api/trips/:id` | Rename a trip `{ title }` |
+| POST | `/api/trips/:id/days` | Append an empty itinerary day (next number, cycled color) |
+| POST | `/api/trips/:id/stops` | Insert a stop `{ day, index, name, time, lat?, lng?, area?, category?, cost?, note? }`; when `lat`/`lng` are provided (geocode or map pick) they are used verbatim, otherwise the position is interpolated from neighbours. `category` is a `StopCategory`, `cost` a per-person estimate in minor units, `note` free-form Markdown |
 | POST | `/api/trips/:id/stops/:stopId/vote` | Toggle current-user vote |
 | POST | `/api/trips/:id/stops/:stopId/comments` | Add a comment `{ text }` |
 | POST | `/api/trips/:id/expenses` | Add expense `{ description, amount, payer, participants }` |
+
+## Dates
+
+The trip DTO carries `startDate` (ISO `YYYY-MM-DD`, or `""` when unknown). New
+trips default it to the creation date; each day's calendar date is derived on
+the client as `startDate + (day.number - 1)` and localized. Seed trips leave
+`startDate` empty and keep their descriptive per-day `dateLabel`.
 
 ## Budget payload
 

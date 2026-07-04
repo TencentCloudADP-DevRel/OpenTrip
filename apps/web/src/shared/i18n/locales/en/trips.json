@@ -1,6 +1,11 @@
 {
   "title": "Your trips",
   "subtitle": "Shared itineraries, votes, and expenses — all in one place.",
+  "newTrip": "New trip",
+  "empty": {
+    "title": "No trips yet",
+    "subtitle": "Create your first trip to start planning stops, votes, and shared expenses."
+  },
   "status": {
     "active": "Active",
     "planning": "Planning",
@@ -12,6 +17,8 @@
     "members_other": "{{count}} travelers",
     "stops_one": "{{count}} stop",
     "stops_other": "{{count}} stops",
+    "createdBy": "{{name}} created {{when}}",
+    "moreMembers": "{{count}} more",
     "open": "Open planner"
   }
 }

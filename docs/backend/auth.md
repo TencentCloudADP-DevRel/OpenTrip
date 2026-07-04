@@ -12,14 +12,14 @@ export const auth = betterAuth({
   database: pool,               // pg.Pool
   emailAndPassword: { enabled: true },
   trustedOrigins: config.trustedOrigins,
-  // baseURL/secret come from env (BETTER_AUTH_URL / BETTER_AUTH_SECRET)
+  // baseURL/secret come from env (BASE_URL / BETTER_AUTH_SECRET)
 });
 ```
 
 ## Environment
 
 - `BETTER_AUTH_SECRET` — >= 32 chars. Generate: `openssl rand -base64 32`.
-- `BETTER_AUTH_URL` — public base URL of the API (where `/api/auth` is mounted).
+- `BASE_URL` — public base URL of the API/auth server (where `/api/auth` is mounted).
 - `TRUSTED_ORIGINS` — comma-separated web origins allowed to call auth (CSRF).
 
 Never commit these. Docker uses an env file; Cloudflare uses

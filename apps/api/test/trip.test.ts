@@ -10,6 +10,43 @@ function freshTrip(): Trip {
 }
 
 describe("Trip aggregate", () => {
+  it("creates a planning trip with the owner as its only current member", () => {
+    const trip = Trip.create({ title: "  Kyoto week  " }, { id: "u1", name: "Ada Lovelace" });
+    const s = trip.toSnapshot();
+    expect(s.title).toBe("Kyoto week");
+    expect(s.status).toBe("planning");
+    expect(s.ownerId).toBe("u1");
+    expect(s.stops).toHaveLength(0);
+    expect(s.days).toHaveLength(1);
+    // Start date is a real ISO date so day labels can show actual dates.
+    expect(s.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(s.days[0]!.dateLabel).toBe("");
+    expect(s.members).toEqual([
+      expect.objectContaining({ id: "u1", initials: "AL", isCurrentUser: true }),
+    ]);
+    expect(trip.currentMemberId()).toBe("u1");
+  });
+
+  it("appends a new empty day with the next number and a cycled color", () => {
+    const trip = Trip.create({ title: "Kyoto" }, { id: "u1", name: "Ada" });
+    const day = trip.addDay();
+    expect(day.number).toBe(2);
+    expect(day.dateLabel).toBe("");
+    expect(day.color).not.toBe(trip.toSnapshot().days[0]!.color);
+    expect(trip.toSnapshot().days).toHaveLength(2);
+  });
+
+  it("rejects creating a trip with a blank title", () => {
+    expect(() => Trip.create({ title: "   " }, { id: "u1", name: "Ada" })).toThrow();
+  });
+
+  it("renames a trip with a trimmed title and rejects blanks", () => {
+    const trip = Trip.create({ title: "new-0704" }, { id: "u1", name: "Ada" });
+    trip.rename("  Hokkaido  ");
+    expect(trip.toSnapshot().title).toBe("Hokkaido");
+    expect(() => trip.rename("   ")).toThrow();
+  });
+
   it("toggles a vote in and out for a member", () => {
     const trip = freshTrip();
     trip.toggleVote("s2", "lynn");
@@ -39,6 +76,32 @@ describe("Trip aggregate", () => {
     expect(day1[1]!.name).toBe("Coffee break");
     const orders = trip.toSnapshot().stops.map((s) => s.order);
     expect(orders).toEqual([...orders].sort((a, b) => a - b));
+  });
+
+  it("applies optional category, cost, and note on insert (defaults otherwise)", () => {
+    const trip = freshTrip();
+    trip.insertStop(
+      {
+        day: 2,
+        index: 0,
+        name: "Ramen",
+        time: "12:00",
+        category: "Food",
+        cost: 1800,
+        note: "  Try the tsukemen ![pic](https://x/y.jpg)  ",
+      },
+      "lynn",
+    );
+    const withOpts = trip.toSnapshot().stops.find((s) => s.name === "Ramen")!;
+    expect(withOpts.category).toBe("Food");
+    expect(withOpts.cost).toBe(1800);
+    expect(withOpts.note).toBe("Try the tsukemen ![pic](https://x/y.jpg)");
+
+    trip.insertStop({ day: 2, index: 0, name: "Plain", time: "" }, "lynn");
+    const bare = trip.toSnapshot().stops.find((s) => s.name === "Plain")!;
+    expect(bare.category).toBe("Plan");
+    expect(bare.cost).toBe(0);
+    expect(bare.note).toBe("");
   });
 
   it("rejects an expense with no participants", () => {

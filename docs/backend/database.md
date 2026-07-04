@@ -24,12 +24,15 @@ Plain SQL files in `apps/api/migrations`, applied in filename order by
 ## Business schema
 
 - `trips` — `id`, `title`, `start_date`, `end_date`, `status`, `currency`,
-  `owner_id`.
+  `owner_id`. New trips store `start_date` as an ISO `YYYY-MM-DD` date so day
+  calendar dates can be derived on the client; seed trips use descriptive labels.
 - `trip_members` — `id`, `trip_id`, `name`, `short_name`, `initials`,
   `avatar_bg`, `avatar_fg`, `is_current_user`.
-- `trip_days` — `trip_id`, `number`, `date_label`, `city`, `color`.
+- `trip_days` — `trip_id`, `number`, `date_label`, `city`, `color`. `date_label`
+  may be empty for date-derived trips; `POST /api/trips/:id/days` appends a row.
 - `stops` — `id`, `trip_id`, `day`, `time`, `duration`, `name`, `area`,
-  `category`, `lat`, `lng`, `cost`, `created_by`, `transit`, `sort_order`.
+  `category`, `lat`, `lng`, `cost`, `created_by`, `transit`, `note`,
+  `sort_order`. `note` (added in `0004_stop_note.sql`) holds optional Markdown.
 - `stop_votes` — `stop_id`, `member_id` (unique together).
 - `stop_comments` — `id`, `stop_id`, `author_id`, `text`, `time_label`,
   `created_at`.

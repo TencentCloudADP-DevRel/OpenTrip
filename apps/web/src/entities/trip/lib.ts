@@ -26,3 +26,28 @@ export function dayColor(trip: Trip, day: number): string {
 export function findDay(trip: Trip, day: number): TripDay | undefined {
   return trip.days.find((d) => d.number === day);
 }
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Human calendar date for a given itinerary day, localized to `locale`.
+ * Derived from the trip's ISO `startDate` offset by (number - 1) days; falls
+ * back to the day's stored `dateLabel` when the trip has no machine date. */
+export function dayDateLabel(
+  trip: Trip,
+  day: TripDay,
+  locale: string,
+): string {
+  if (!ISO_DATE.test(trip.startDate)) return day.dateLabel;
+  const [y, m, d] = trip.startDate.split("-").map(Number) as [
+    number,
+    number,
+    number,
+  ];
+  const dt = new Date(Date.UTC(y, m - 1, d + (day.number - 1)));
+  return new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(dt);
+}

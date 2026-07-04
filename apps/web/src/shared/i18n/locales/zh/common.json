@@ -13,7 +13,9 @@
     "signIn": "登录",
     "signOut": "退出登录",
     "cancel": "取消",
-    "close": "关闭"
+    "close": "关闭",
+    "collapseSidebar": "收起侧栏",
+    "expandSidebar": "展开侧栏"
   },
   "state": {
     "loading": "加载中…",

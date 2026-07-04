@@ -53,7 +53,7 @@
 ### Relevant rule
 
 - `betterAuth({ database, emailAndPassword, trustedOrigins, ... })`. Accepts a
-  `pg.Pool` directly. `BETTER_AUTH_SECRET` (>= 32 chars) and `BETTER_AUTH_URL`
+  `pg.Pool` directly. `BETTER_AUTH_SECRET` (>= 32 chars) and `BASE_URL`
   via env. Node: `toNodeHandler(auth)`; Web/Workers: `auth.handler(request)`.
   Run the CLI migrate/generate after config or plugin changes.
 

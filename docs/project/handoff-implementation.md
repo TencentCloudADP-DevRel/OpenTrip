@@ -41,7 +41,7 @@ as real cossUI React primitives.
 | Balances + settlement | Computed server-side from persisted expenses |
 | Member presence dots | Demo (cosmetic, from seed) |
 | Invite ("Link copied") | Demo (client-only affordance) |
-| Trip creation ("New trip") | Demo (out of MVP scope) |
+| Trip creation ("New trip") | Persisted (creates a planning trip owned by the current user as its first member) |
 
 ## Data parity
 

@@ -3,25 +3,32 @@
 ## Local development
 
 ```bash
-make install          # once
-make dev              # start web + api together
+make setup             # first time: install + .env + Postgres + migrate + seed
+make dev               # Postgres (if needed) + web + api
 ```
 
-`make dev` creates `apps/api/.env` from `apps/api/.env.example` if missing, then
-runs both dev servers in parallel:
+`make dev` ensures the root `.env` exists, starts Postgres via Docker when port
+5432 is not already reachable, applies pending migrations, then runs both dev
+servers in parallel:
 
 - **web** — Vite on http://localhost:5173 (proxies `/api` to the API).
-- **api** — Hono via `tsx watch` on http://localhost:8787 (loads `apps/api/.env`).
+- **api** — Hono via `tsx watch` on http://localhost:8787 (loads root `.env`).
 
-A reachable PostgreSQL is required for API calls; the quickest option is the
-Docker Postgres:
+Other useful targets:
 
-```bash
-docker compose -f deploy/docker/compose.yaml up -d postgres
-pnpm db:migrate && pnpm db:seed
-```
+| Command | Purpose |
+| --- | --- |
+| `make dev-nodb` | Start web + api only (skip Postgres startup) |
+| `make dev-web` | Vite only |
+| `make dev-api` | Postgres + migrations + API only |
+| `make postgres-up` / `make postgres-down` | Start/stop local Postgres container |
+| `make db-init` | `db:migrate` + `db:seed` |
+| `make deploy-up` | Full docker stack (postgres + api + web on :8080) |
 
-Run a single side with `make dev-web` or `make dev-api`.
+`.env` is created from `.env.example` on first run. `BASE_URL` is the single
+public origin used by the frontend API client and Better Auth (default:
+`http://localhost:5173`). Ensure `DATABASE_URL` matches the Postgres credentials
+(defaults: `wayfare:wayfare@localhost:5432/wayfare`).
 
 ## Local verification
 
@@ -40,11 +47,10 @@ not part of automated verification.
 
 | Variable | Used by | Notes |
 | --- | --- | --- |
+| `BASE_URL` | web + api | public API/auth origin used by browser and Better Auth |
 | `DATABASE_URL` | api (Node/Docker) | Postgres connection string |
 | `BETTER_AUTH_SECRET` | api | >= 32 chars |
-| `BETTER_AUTH_URL` | api | public API base URL |
 | `TRUSTED_ORIGINS` | api | comma-separated web origins |
-| `VITE_API_BASE_URL` | web build | API origin for the SPA |
 
 On Cloudflare, `DATABASE_URL` is replaced by the Hyperdrive binding; secrets are
 set with `wrangler secret`.

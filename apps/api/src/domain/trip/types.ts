@@ -48,6 +48,8 @@ export interface StopSnapshot {
   createdBy: string;
   transit: boolean;
   order: number;
+  /** Free-form note in Markdown (may embed image URLs). Empty string if none. */
+  note: string;
   votes: string[];
   comments: CommentSnapshot[];
 }
@@ -67,6 +69,9 @@ export interface TripSnapshot {
   title: string;
   status: TripStatus;
   currency: string;
+  /** Trip start date as an ISO `YYYY-MM-DD` string, or "" when unknown.
+   * Day dates are derived from this by offsetting by (day.number - 1). */
+  startDate: string;
   ownerId: string;
   members: MemberSnapshot[];
   days: DaySnapshot[];

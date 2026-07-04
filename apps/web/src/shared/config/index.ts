@@ -1,7 +1,23 @@
-/** Runtime configuration derived from Vite env. */
+declare const __WAYFARE_BASE_URL__: string;
+
+function requireBaseUrl(value: string): string {
+  const trimmed = value.trim().replace(/\/$/, "");
+  if (!trimmed) {
+    throw new Error("BASE_URL is required. Set it in the root .env file.");
+  }
+
+  const url = new URL(trimmed);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("BASE_URL must start with http:// or https://.");
+  }
+
+  return url.origin;
+}
+
+/** Runtime configuration injected from the root `.env` by Vite. */
 export const config = {
-  /** API origin. Empty string means same-origin (dev proxy / prod reverse proxy). */
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? "",
+  /** Public origin for API/auth calls. */
+  baseUrl: requireBaseUrl(__WAYFARE_BASE_URL__),
 } as const;
 
 /** React Query keys, centralized to avoid string drift. */

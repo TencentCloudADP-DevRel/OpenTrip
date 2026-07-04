@@ -20,7 +20,21 @@ export interface TripMapProps {
   activeStopId?: string | null;
   onSelectStop?: (id: string) => void;
   unavailableLabel?: string;
+  /** When true, the map enters point-picking mode (pushpin cursor). */
+  picking?: boolean;
+  /** Called with the clicked coordinates while `picking`. */
+  onPick?: (lng: number, lat: number) => void;
+  /** Called with the coordinates of a right-click / long-press. */
+  onContext?: (lng: number, lat: number) => void;
 }
+
+/** Pushpin cursor (data URI) with the hotspot at the pin tip. */
+const PIN_CURSOR =
+  "url(\"data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="%23e11d48" stroke="white" stroke-width="1.5"><path d="M12 2c-3.9 0-7 3.1-7 7 0 5 7 13 7 13s7-8 7-13c0-3.9-3.1-7-7-7z"/><circle cx="12" cy="9" r="2.5" fill="white" stroke="none"/></svg>',
+  ) +
+  "\") 16 30, crosshair";
 
 /** MapLibre wrapper in the spirit of mapcn: CARTO positron basemap, per-day
  * colored routes, numbered markers, and active-stop focus. */
@@ -30,6 +44,9 @@ export function TripMap({
   activeStopId,
   onSelectStop,
   unavailableLabel = "Map unavailable offline",
+  picking = false,
+  onPick,
+  onContext,
 }: TripMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -38,8 +55,12 @@ export function TripMap({
   const readyRef = useRef(false);
   const lastFitRef = useRef<string | null>(null);
   const selectRef = useRef(onSelectStop);
+  const pickRef = useRef(onPick);
+  const contextRef = useRef(onContext);
   const [failed, setFailed] = useState(false);
   selectRef.current = onSelectStop;
+  pickRef.current = onPick;
+  contextRef.current = onContext;
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -50,7 +71,7 @@ export function TripMap({
         style: STYLE_URL,
         center: [136.8, 35.1],
         zoom: 6.4,
-        attributionControl: { compact: true },
+        attributionControl: false,
       });
     } catch {
       setFailed(true);
@@ -58,6 +79,9 @@ export function TripMap({
     }
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
     map.on("error", () => setFailed(true));
+    map.on("contextmenu", (e) => {
+      contextRef.current?.(e.lngLat.lng, e.lngLat.lat);
+    });
     map.on("load", () => {
       map.addSource("trip-route", {
         type: "geojson",
@@ -176,6 +200,26 @@ export function TripMap({
   useEffect(() => {
     syncRef.current();
   }, [stops, day, activeStopId]);
+
+  // Point-picking mode: pushpin cursor + one click resolves a coordinate.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const canvas = map.getCanvas();
+    if (!picking) {
+      canvas.style.cursor = "";
+      return;
+    }
+    canvas.style.cursor = PIN_CURSOR;
+    const handler = (e: { lngLat: { lng: number; lat: number } }) => {
+      pickRef.current?.(e.lngLat.lng, e.lngLat.lat);
+    };
+    map.on("click", handler);
+    return () => {
+      map.off("click", handler);
+      canvas.style.cursor = "";
+    };
+  }, [picking]);
 
   return (
     <div ref={containerRef} className="relative size-full overflow-hidden bg-[#e9ecf4]">

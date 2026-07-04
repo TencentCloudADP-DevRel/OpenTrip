@@ -6,6 +6,8 @@ export interface TripDto {
   title: string;
   status: string;
   currency: string;
+  /** ISO `YYYY-MM-DD` start date, or "" when unknown. */
+  startDate: string;
   members: TripSnapshot["members"];
   days: TripSnapshot["days"];
   stops: Array<{
@@ -21,6 +23,7 @@ export interface TripDto {
     cost: number;
     createdBy: string;
     transit: boolean;
+    note: string;
     votes: string[];
     comments: { author: string; timeLabel: string; text: string }[];
   }>;
@@ -44,6 +47,7 @@ export function toTripDto(trip: Trip): TripDto {
     title: s.title,
     status: s.status,
     currency: s.currency,
+    startDate: s.startDate,
     members: s.members,
     days: s.days,
     stops: s.stops.map((st) => ({
@@ -59,6 +63,7 @@ export function toTripDto(trip: Trip): TripDto {
       cost: st.cost,
       createdBy: st.createdBy,
       transit: st.transit,
+      note: st.note,
       votes: st.votes,
       comments: st.comments,
     })),

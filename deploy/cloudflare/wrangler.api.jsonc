@@ -18,9 +18,10 @@
       "id": "<your-hyperdrive-id>"
     }
   ],
-  // Non-secret vars. Secrets (BETTER_AUTH_SECRET, BETTER_AUTH_URL) go through
-  // `wrangler secret put`. Set TRUSTED_ORIGINS to your Pages origin.
+  // Non-secret vars. BASE_URL is the public API Worker origin. Set
+  // TRUSTED_ORIGINS to your Pages origin. Secrets go through `wrangler secret put`.
   "vars": {
+    "BASE_URL": "https://wayfare-api.<your-subdomain>.workers.dev",
     "TRUSTED_ORIGINS": "https://wayfare-web.pages.dev"
   }
 }

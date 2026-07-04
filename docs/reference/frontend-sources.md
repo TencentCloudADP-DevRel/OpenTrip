@@ -45,7 +45,30 @@
 - We port the cossUI token CSS from the handoff verbatim into
   `apps/web/src/app/styles` and implement a focused primitive set
   (`Button`, `Badge`, `Input`, `Checkbox`, `Tabs`, `Card`, `Avatar`,
-  `Spinner`) in `apps/web/src/shared/ui`, matching cossUI APIs.
+  `Spinner`, `Autocomplete`, `Select`) in `apps/web/src/shared/ui`, matching
+  cossUI APIs.
+- `Autocomplete` and `Select` are adapted from the coss components and install
+  Base UI (`@base-ui/react`) as their only headless dependency; the sources were
+  taken from the coss registry and re-tokenized to our theme. `Select` backs the
+  schedule time/date option pickers.
+
+## Geocoding (Photon)
+
+### Source
+
+- Photon (OpenStreetMap-based, keyless): https://photon.komoot.io
+
+### Relevant rule
+
+- Photon returns features ordered by importance, i.e. relevance-sorted, and is
+  CORS-enabled, so it can be called directly from the browser without a key.
+  Supports `lat`/`lon` bias and a `/reverse` endpoint.
+
+### Project decision
+
+- `apps/web/src/shared/api/geocode.ts` wraps Photon for the stop-name
+  autocomplete (`searchPlaces`, biased toward the trip footprint) and for map
+  picking (`reversePlace`). No API key or backend proxy is required.
 
 ## make-interfaces-feel-better
 

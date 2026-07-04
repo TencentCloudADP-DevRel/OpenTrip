@@ -27,7 +27,7 @@
 - API deploys as a Worker using `deploy/cloudflare/wrangler.api.jsonc`
   (`nodejs_compat_v2`, `hyperdrive` binding `HYPERDRIVE`, `observability`).
 - Frontend deploys to Pages (build `apps/web`, publish `apps/web/dist`).
-- `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` are Worker secrets/vars, never
+- `BETTER_AUTH_SECRET` is a Worker secret; `BASE_URL` is a Worker var, never
   committed. `deploy/cloudflare/secrets.example.json` lists key names only.
   See [../operations/cloudflare.md](../operations/cloudflare.md).
 

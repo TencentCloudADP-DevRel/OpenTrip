@@ -34,7 +34,7 @@ export function Sidebar(props: SidebarProps) {
       : trip.stops.filter((s) => s.day === day).length;
 
   return (
-    <aside className="hidden w-[340px] flex-none flex-col border-r border-border bg-sidebar md:flex">
+    <div className="flex h-full min-h-0 flex-col">
       {selectedStop ? (
         <StopDetail
           trip={trip}
@@ -129,6 +129,6 @@ export function Sidebar(props: SidebarProps) {
           </div>
         </>
       )}
-    </aside>
+    </div>
   );
 }

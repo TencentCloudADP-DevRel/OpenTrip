@@ -4,10 +4,10 @@ The SPA is a static build (`apps/web/dist`) deployed to Cloudflare Pages.
 
 ## Build
 
-The API origin is baked in at build time via `VITE_API_BASE_URL`:
+The API/auth origin is baked in at build time via `BASE_URL`:
 
 ```bash
-VITE_API_BASE_URL="https://wayfare-api.<subdomain>.workers.dev" \
+BASE_URL="https://wayfare-api.<subdomain>.workers.dev" \
   pnpm --filter @wayfare/web build
 ```
 
@@ -30,6 +30,6 @@ The app uses history-based client routing. Add a `_redirects` file (already in
 
 - Set the Worker var `TRUSTED_ORIGINS` to the Pages origin
   (e.g. `https://wayfare-web.pages.dev`).
-- Set `BETTER_AUTH_URL` to the Worker origin.
+- Set `BASE_URL` to the Worker origin for both frontend calls and Better Auth.
 - The SPA sends credentials; the API's CORS is configured from
   `TRUSTED_ORIGINS`.

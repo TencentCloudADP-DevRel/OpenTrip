@@ -13,9 +13,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       type={type}
       className={cn(
         "h-9 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground",
-        "placeholder:text-muted-foreground/70 shadow-xs",
-        "transition-[box-shadow,border-color] duration-150 ease-[var(--ease-out)]",
-        "outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40",
+        "placeholder:text-muted-foreground/70",
+        "transition-[background-color,border-color] duration-150 ease-[var(--ease-out)]",
+        "outline-none hover:border-ring/50 hover:bg-accent/40",
+        "focus:border-ring focus:bg-background focus-visible:outline-none",
         "disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}

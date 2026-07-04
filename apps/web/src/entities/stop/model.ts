@@ -28,6 +28,8 @@ export interface Stop {
   cost: number;
   createdBy: string;
   transit: boolean;
+  /** Free-form note in Markdown (may embed image URLs). */
+  note: string;
   votes: string[];
   comments: StopComment[];
 }
