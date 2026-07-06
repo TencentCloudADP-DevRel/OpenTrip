@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 
 COMPOSE_FILE ?= deploy/docker/compose.yaml
-POSTGRES_PORT ?= 5432
+POSTGRES_PORT ?= 5430
 POSTGRES_USER ?= wetravel
 POSTGRES_DB ?= wetravel
 
@@ -31,8 +31,8 @@ help:
 	@echo "Development:"
 	@echo "  make dev             Start Postgres + migrate + web + api dev servers"
 	@echo "  make dev-nodb        Start web + api only (skip Postgres startup)"
-	@echo "  make dev-web         Start Vite only (http://localhost:5173)"
-	@echo "  make dev-api         Start API only (http://localhost:8787)"
+	@echo "  make dev-web         Start Vite only (http://localhost:5170)"
+	@echo "  make dev-api         Start API only (http://localhost:8780)"
 	@echo ""
 	@echo "Database:"
 	@echo "  make db-init         Run migrations then seed demo data"
@@ -92,8 +92,8 @@ postgres-down:
 
 dev: env postgres-up db-migrate
 	@echo "Starting web + api dev servers (Ctrl+C to stop)..."
-	@echo "  web  → http://localhost:5173  (proxies /api to :8787)"
-	@echo "  api  → http://localhost:8787"
+	@echo "  web  → http://localhost:5170  (proxies /api to :8780)"
+	@echo "  api  → http://localhost:8780"
 	pnpm dev
 
 dev-nodb: env

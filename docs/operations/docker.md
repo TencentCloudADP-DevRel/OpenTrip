@@ -21,9 +21,9 @@ docker compose up -d --build
 Services:
 
 - `postgres` — data volume `wetravel-pgdata`, healthchecked.
-- `api` — waits for a healthy `postgres`, serves on port 8787, and stores
+- `api` — waits for a healthy `postgres`, serves on port 8780, and stores
   filesystem uploads in the `wetravel-uploads` volume.
-- `web` — serves the built SPA on port 8080.
+- `web` — serves the built SPA on port 8090.
 
 ## 3. Migrate + seed
 
@@ -35,8 +35,8 @@ docker compose exec api pnpm seed
 ## 4. Verify
 
 ```bash
-curl http://localhost:8787/api/health   # {"data":{"status":"ok"}}
-open http://localhost:8080
+curl http://localhost:8780/api/health   # {"data":{"status":"ok"}}
+open http://localhost:8090
 ```
 
 ## Logs

@@ -15,5 +15,5 @@ COPY tsconfig.base.json ./
 COPY apps/api ./apps/api
 
 WORKDIR /app/apps/api
-EXPOSE 8787
+EXPOSE 8780
 CMD ["pnpm", "start"]

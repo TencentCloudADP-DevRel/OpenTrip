@@ -8,11 +8,11 @@ make dev               # Postgres (if needed) + web + api
 ```
 
 `make dev` ensures the root `.env` exists, starts Postgres via Docker when port
-5432 is not already reachable, applies pending migrations, then runs both dev
+5430 is not already reachable, applies pending migrations, then runs both dev
 servers in parallel:
 
-- **web** — Vite on http://localhost:5173 (proxies `/api` to the API).
-- **api** — Hono via `tsx watch` on http://localhost:8787 (loads root `.env`).
+- **web** — Vite on http://localhost:5170 (proxies `/api` to the API).
+- **api** — Hono via `tsx watch` on http://localhost:8780 (loads root `.env`).
 
 Other useful targets:
 
@@ -24,12 +24,12 @@ Other useful targets:
 | `make postgres-up` / `make postgres-down` | Start/stop local Postgres container |
 | `make db-init` | `db:migrate` + `db:seed` |
 | `make db-reset` | drop all tables, then `db:migrate` + `db:seed` |
-| `make deploy-up` | Full docker stack (postgres + api + web on :8080) |
+| `make deploy-up` | Full docker stack (postgres + api + web on :8090) |
 
 `.env` is created from `.env.example` on first run. `BASE_URL` is the single
 public origin used by the frontend API client and Better Auth (default:
-`http://localhost:5173`). Ensure `DATABASE_URL` matches the Postgres credentials
-(defaults: `wetravel:wetravel@localhost:5432/wetravel`).
+`http://localhost:5170`). Ensure `DATABASE_URL` matches the Postgres credentials
+(defaults: `wetravel:wetravel@localhost:5430/wetravel`).
 
 ## Local verification
 

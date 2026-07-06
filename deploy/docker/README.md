@@ -31,8 +31,8 @@ docker compose exec api pnpm seed
 ## Verify
 
 ```bash
-curl http://localhost:8787/api/health   # {"data":{"status":"ok"}}
-open http://localhost:8080
+curl http://localhost:8780/api/health   # {"data":{"status":"ok"}}
+open http://localhost:8090
 ```
 
 ## Logs, backup
@@ -44,7 +44,7 @@ docker compose exec postgres pg_dump -U wetravel wetravel > backup.sql
 
 ## Notes
 
-- The browser talks only to `web` (port 8080); nginx proxies `/api` to `api`,
+- The browser talks only to `web` (port 8090); nginx proxies `/api` to `api`,
   so auth cookies are same-origin.
 - The API connects to Postgres via `DATABASE_URL` (no Hyperdrive locally).
 - Avatar files use the `wetravel-uploads` named volume by default. Storage

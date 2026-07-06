@@ -7,8 +7,8 @@ import { createApp } from "./interfaces/http/app";
 const config = loadConfig(process.env);
 const container = createContainer(config, createNodeStorage(config.storage));
 const app = createApp(container);
-const port = Number(process.env.PORT ?? 8787);
+const port = Number(process.env.PORT ?? 8780);
 
 serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`API listening on http://localhost:${info.port}`);
+    console.log(`API listening on http://localhost:${info.port}`);
 });

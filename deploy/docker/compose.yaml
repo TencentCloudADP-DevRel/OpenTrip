@@ -1,59 +1,63 @@
 name: wetravel
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-wetravel}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wetravel}
-      POSTGRES_DB: ${POSTGRES_DB:-wetravel}
-    volumes:
-      - wetravel-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wetravel}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+    postgres:
+        image: postgres:16-alpine
+        environment:
+            POSTGRES_USER: ${POSTGRES_USER:-wetravel}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wetravel}
+            POSTGRES_DB: ${POSTGRES_DB:-wetravel}
+        volumes:
+            - wetravel-pgdata:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wetravel}"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+        ports:
+            - "${POSTGRES_PORT:-5430}:5432"
 
-  api:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/api.Dockerfile
-    environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-wetravel}:${POSTGRES_PASSWORD:-wetravel}@postgres:5432/${POSTGRES_DB:-wetravel}
-      BASE_URL: ${BASE_URL:-http://localhost:8080}
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-      TRUSTED_ORIGINS: ${WEB_ORIGIN:-http://localhost:8080}
-      STORAGE_BACKEND: ${STORAGE_BACKEND:-fs}
-      STORAGE_ROOT: ${STORAGE_ROOT:-/app/apps/api/uploads}
-      PORT: "8787"
-    volumes:
-      - wetravel-uploads:/app/apps/api/uploads
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8787/api/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    ports:
-      - "8787:8787"
+    api:
+        build:
+            context: ../..
+            dockerfile: deploy/docker/api.Dockerfile
+        environment:
+            DATABASE_URL: postgres://${POSTGRES_USER:-wetravel}:${POSTGRES_PASSWORD:-wetravel}@postgres:5432/${POSTGRES_DB:-wetravel}
+            BASE_URL: ${BASE_URL:-http://localhost:8090}
+            BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+            TRUSTED_ORIGINS: ${WEB_ORIGIN:-http://localhost:8090}
+            STORAGE_BACKEND: ${STORAGE_BACKEND:-fs}
+            STORAGE_ROOT: ${STORAGE_ROOT:-/app/apps/api/uploads}
+            PORT: "8780"
+        volumes:
+            - wetravel-uploads:/app/apps/api/uploads
+        depends_on:
+            postgres:
+                condition: service_healthy
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "wget -qO- http://localhost:8780/api/health || exit 1",
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        ports:
+            - "8780:8780"
 
-  web:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/web.Dockerfile
-      args:
-        # Browser-visible origin; nginx proxies /api to the api service.
-        BASE_URL: ${BASE_URL:-http://localhost:8080}
-    depends_on:
-      - api
-    ports:
-      - "8080:80"
+    web:
+        build:
+            context: ../..
+            dockerfile: deploy/docker/web.Dockerfile
+            args:
+                # Browser-visible origin; nginx proxies /api to the api service.
+                BASE_URL: ${BASE_URL:-http://localhost:8090}
+        depends_on:
+            - api
+        ports:
+            - "8090:80"
 
 volumes:
-  wetravel-pgdata:
-  wetravel-uploads:
+    wetravel-pgdata:
+    wetravel-uploads:

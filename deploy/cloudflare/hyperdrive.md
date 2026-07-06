@@ -28,7 +28,7 @@ For `wrangler dev`, set a local connection string:
 
 ```bash
 wrangler hyperdrive create wetravel-db-local \
-  --connection-string "postgres://postgres:postgres@localhost:5432/wetravel"
+  --connection-string "postgres://postgres:postgres@localhost:5430/wetravel"
 ```
 
 or provide `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in `.dev.vars`.
