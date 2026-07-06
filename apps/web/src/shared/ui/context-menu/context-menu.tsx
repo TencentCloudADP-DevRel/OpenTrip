@@ -88,6 +88,12 @@ export function ContextMenuItem({
   );
 }
 
+export function ContextMenuGroup(
+  props: ContextMenuPrimitive.Group.Props,
+): React.ReactElement {
+  return <ContextMenuPrimitive.Group data-slot="context-menu-group" {...props} />;
+}
+
 export function ContextMenuSeparator({
   className,
   ...props

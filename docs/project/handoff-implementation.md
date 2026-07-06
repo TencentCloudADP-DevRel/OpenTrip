@@ -37,6 +37,7 @@ as real cossUI React primitives.
 | Vote toggle | Persisted (current user) |
 | Add comment | Persisted |
 | Insert stop | Persisted |
+| Reorder days (drag a day column) | Persisted (renumbers days, remaps stops; optimistic on the client) |
 | Add expense | Persisted |
 | Balances + settlement | Computed server-side from persisted expenses |
 | Member presence dots | Demo (cosmetic, from seed) |

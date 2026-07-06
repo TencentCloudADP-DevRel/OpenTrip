@@ -40,6 +40,15 @@ export interface AddExpenseDraft {
   participants: string[];
 }
 
+export interface UpdateDayDraft {
+  /** Optional ISO date override for the day header. */
+  date?: string;
+  /** Legacy display date override for imported data without an ISO date. */
+  dateLabel?: string;
+  /** Optional city or route label for the day header. */
+  city?: string;
+}
+
 export interface CreateTripDraft {
   title: string;
   currency?: string;
@@ -94,6 +103,19 @@ function todayIso(): string {
   return `${y}-${m}-${d}`;
 }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function addDaysIso(date: string, days: number): string {
+  if (!ISO_DATE.test(date)) return "";
+  const [y, m, d] = date.split("-").map(Number) as [number, number, number];
+  const next = new Date(Date.UTC(y, m - 1, d + days));
+  return [
+    next.getUTCFullYear(),
+    String(next.getUTCMonth() + 1).padStart(2, "0"),
+    String(next.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
 const DAY_CENTERS: Record<number, [number, number]> = {
   1: [35.68, 139.75],
   2: [35.68, 139.72],
@@ -124,12 +146,13 @@ export class Trip {
     if (!title) throw new DomainError("empty_trip_title", "Trip title is required");
 
     const palette = MEMBER_PALETTE[0]!;
+    const startDate = todayIso();
     const snapshot: TripSnapshot = {
       id: `t${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       title,
       status: "planning",
       currency: draft.currency?.trim() || "JPY",
-      startDate: todayIso(),
+      startDate,
       ownerId: owner.id,
       members: [
         {
@@ -143,7 +166,15 @@ export class Trip {
           isCurrentUser: true,
         },
       ],
-      days: [{ number: 1, dateLabel: "", city: "", color: dayColorFor(1) }],
+      days: [
+        {
+          number: 1,
+          date: startDate,
+          dateLabel: "",
+          city: "",
+          color: dayColorFor(1),
+        },
+      ],
       stops: [],
       expenses: [],
     };
@@ -166,6 +197,12 @@ export class Trip {
     const stop = this.snapshot.stops.find((s) => s.id === stopId);
     if (!stop) throw new DomainError("stop_not_found", `Stop ${stopId} not found`);
     return stop;
+  }
+
+  private requireDay(number: number): DaySnapshot {
+    const day = this.snapshot.days.find((d) => d.number === number);
+    if (!day) throw new DomainError("day_not_found", `Day ${number} not found`);
+    return day;
   }
 
   private requireMember(memberId: string): void {
@@ -312,12 +349,62 @@ export class Trip {
       this.snapshot.days.reduce((max, d) => Math.max(max, d.number), 0) + 1;
     const day: DaySnapshot = {
       number: nextNumber,
+      date: addDaysIso(this.snapshot.startDate, nextNumber - 1),
       dateLabel: "",
       city: "",
       color: dayColorFor(nextNumber),
     };
     this.snapshot.days.push(day);
     return day;
+  }
+
+  /** Update display metadata for an existing itinerary day. */
+  updateDay(number: number, draft: UpdateDayDraft): DaySnapshot {
+    const day = this.requireDay(number);
+    if (draft.date !== undefined) day.date = draft.date.trim();
+    if (draft.dateLabel !== undefined) day.dateLabel = draft.dateLabel.trim();
+    if (draft.city !== undefined) day.city = draft.city.trim();
+    return day;
+  }
+
+  /** Reorder the itinerary to the given sequence of existing day numbers.
+   * Days are renumbered 1..N by their new position: each day keeps its city,
+   * legacy label, and stops, while its calendar date and color are recomputed
+   * from the new position (dates stay sequential from the trip start). Stops
+   * are remapped to their day's new number, preserving per-day order. */
+  reorderDays(order: number[]): void {
+    const days = this.snapshot.days;
+    const isPermutation =
+      order.length === days.length &&
+      new Set(order).size === order.length &&
+      order.every((n) => days.some((d) => d.number === n));
+    if (!isPermutation) {
+      throw new DomainError(
+        "invalid_day_order",
+        "Order must be a permutation of the existing day numbers",
+      );
+    }
+
+    const byNumber = new Map(days.map((d) => [d.number, d]));
+    const oldToNew = new Map<number, number>();
+    const reordered: DaySnapshot[] = order.map((oldNumber, i) => {
+      const newNumber = i + 1;
+      oldToNew.set(oldNumber, newNumber);
+      const day = byNumber.get(oldNumber)!;
+      return {
+        number: newNumber,
+        date: addDaysIso(this.snapshot.startDate, newNumber - 1),
+        dateLabel: day.dateLabel,
+        city: day.city,
+        color: dayColorFor(newNumber),
+      };
+    });
+
+    this.snapshot.days = reordered;
+    this.snapshot.stops = this.snapshot.stops
+      .map((s) => ({ ...s, day: oldToNew.get(s.day) ?? s.day }))
+      .sort((a, b) => a.day - b.day || a.order - b.order)
+      .map((s, i) => ({ ...s, order: i }));
   }
 
   /** The member flagged as the current user (demo mapping). */

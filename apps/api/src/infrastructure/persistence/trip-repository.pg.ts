@@ -1,4 +1,4 @@
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { Trip } from "../../domain/trip";
 import type {
   DaySnapshot,
@@ -12,7 +12,7 @@ import type {
 
 /** PostgreSQL adapter for the Trip aggregate. Loads the whole aggregate on
  * read; on save, rewrites the mutable child rows in a transaction. Members and
- * days are seed-static and not rewritten here. */
+ * days are managed by narrow repository methods instead of the full save. */
 export class PgTripRepository implements TripRepository {
   constructor(private pool: Pool) {}
 
@@ -117,7 +117,7 @@ export class PgTripRepository implements TripRepository {
           [id],
         ),
         this.pool.query(
-          `SELECT number, date_label, city, color FROM trip_days WHERE trip_id = $1 ORDER BY number ASC`,
+          `SELECT number, date, date_label, city, color FROM trip_days WHERE trip_id = $1 ORDER BY number ASC`,
           [id],
         ),
         this.pool.query(
@@ -249,6 +249,7 @@ export class PgTripRepository implements TripRepository {
       })),
       days: (days.rows as Array<Record<string, unknown>>).map((d) => ({
         number: d.number as number,
+        date: d.date as string,
         dateLabel: d.date_label as string,
         city: d.city as string,
         color: d.color as string,
@@ -279,9 +280,9 @@ export class PgTripRepository implements TripRepository {
       }
       for (const d of s.days) {
         await client.query(
-          `INSERT INTO trip_days (trip_id, number, date_label, city, color)
-           VALUES ($1,$2,$3,$4,$5)`,
-          [s.id, d.number, d.dateLabel, d.city, d.color],
+          `INSERT INTO trip_days (trip_id, number, date, date_label, city, color)
+           VALUES ($1,$2,$3,$4,$5,$6)`,
+          [s.id, d.number, d.date, d.dateLabel, d.city, d.color],
         );
       }
       await client.query("COMMIT");
@@ -299,11 +300,45 @@ export class PgTripRepository implements TripRepository {
 
   async addDay(tripId: string, day: DaySnapshot): Promise<void> {
     await this.pool.query(
-      `INSERT INTO trip_days (trip_id, number, date_label, city, color)
-       VALUES ($1,$2,$3,$4,$5)
+      `INSERT INTO trip_days (trip_id, number, date, date_label, city, color)
+       VALUES ($1,$2,$3,$4,$5,$6)
        ON CONFLICT (trip_id, number) DO NOTHING`,
-      [tripId, day.number, day.dateLabel, day.city, day.color],
+      [tripId, day.number, day.date, day.dateLabel, day.city, day.color],
     );
+  }
+
+  async updateDay(tripId: string, day: DaySnapshot): Promise<void> {
+    await this.pool.query(
+      `UPDATE trip_days SET date = $3, date_label = $4, city = $5
+       WHERE trip_id = $1 AND number = $2`,
+      [tripId, day.number, day.date, day.dateLabel, day.city],
+    );
+  }
+
+  async reorderDays(trip: Trip): Promise<void> {
+    const s = trip.toSnapshot();
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      // A reorder renumbers days and remaps every stop's day, so rewrite both
+      // child sets atomically. Expenses are untouched by a day reorder.
+      await client.query(`DELETE FROM trip_days WHERE trip_id = $1`, [s.id]);
+      for (const d of s.days) {
+        await client.query(
+          `INSERT INTO trip_days (trip_id, number, date, date_label, city, color)
+           VALUES ($1,$2,$3,$4,$5,$6)`,
+          [s.id, d.number, d.date, d.dateLabel, d.city, d.color],
+        );
+      }
+      await client.query(`DELETE FROM stops WHERE trip_id = $1`, [s.id]);
+      await insertStops(client, s.id, s.stops);
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   async save(trip: Trip): Promise<void> {
@@ -314,29 +349,7 @@ export class PgTripRepository implements TripRepository {
       await client.query(`DELETE FROM stops WHERE trip_id = $1`, [s.id]);
       await client.query(`DELETE FROM expenses WHERE trip_id = $1`, [s.id]);
 
-      for (const st of s.stops) {
-        await client.query(
-          `INSERT INTO stops (id, trip_id, day, time, duration, name, area, category, lat, lng, cost, cost_currency, created_by, transit, note, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
-          [
-            st.id, s.id, st.day, st.time, st.duration, st.name, st.area,
-            st.category, st.lat, st.lng, st.cost, st.costCurrency, st.createdBy, st.transit, st.note, st.order,
-          ],
-        );
-        for (const memberId of st.votes) {
-          await client.query(
-            `INSERT INTO stop_votes (stop_id, member_id) VALUES ($1,$2)`,
-            [st.id, memberId],
-          );
-        }
-        for (const c of st.comments) {
-          await client.query(
-            `INSERT INTO stop_comments (stop_id, author_id, text, time_label)
-             VALUES ($1,$2,$3,$4)`,
-            [st.id, c.author, c.text, c.timeLabel],
-          );
-        }
-      }
+      await insertStops(client, s.id, s.stops);
 
       for (const e of s.expenses) {
         await client.query(
@@ -367,6 +380,38 @@ export class PgTripRepository implements TripRepository {
       throw err;
     } finally {
       client.release();
+    }
+  }
+}
+
+/** Insert stops with their votes and comments. Caller manages the surrounding
+ * transaction and the preceding delete of existing rows. */
+async function insertStops(
+  client: PoolClient,
+  tripId: string,
+  stops: readonly StopSnapshot[],
+): Promise<void> {
+  for (const st of stops) {
+    await client.query(
+      `INSERT INTO stops (id, trip_id, day, time, duration, name, area, category, lat, lng, cost, cost_currency, created_by, transit, note, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+      [
+        st.id, tripId, st.day, st.time, st.duration, st.name, st.area,
+        st.category, st.lat, st.lng, st.cost, st.costCurrency, st.createdBy, st.transit, st.note, st.order,
+      ],
+    );
+    for (const memberId of st.votes) {
+      await client.query(
+        `INSERT INTO stop_votes (stop_id, member_id) VALUES ($1,$2)`,
+        [st.id, memberId],
+      );
+    }
+    for (const c of st.comments) {
+      await client.query(
+        `INSERT INTO stop_comments (stop_id, author_id, text, time_label)
+         VALUES ($1,$2,$3,$4)`,
+        [st.id, c.author, c.text, c.timeLabel],
+      );
     }
   }
 }

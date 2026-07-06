@@ -1,13 +1,16 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Trip } from "@/entities/trip";
+import { reorderTripDays as reorderDaysLocal, type Trip } from "@/entities/trip";
 import {
   addComment,
   addExpense,
   addTripDay,
   insertStop,
+  reorderTripDays,
   toggleVote,
+  updateTripDay,
   type AddExpenseInput,
   type InsertStopInput,
+  type UpdateTripDayInput,
 } from "@/shared/api";
 import { queryKeys } from "@/shared/config";
 
@@ -38,6 +41,30 @@ export function useTripActions(tripId: string) {
     mutationFn: () => addTripDay(tripId),
     onSuccess,
   });
+  const dayUpdate = useMutation({
+    mutationFn: (input: { dayNumber: number; patch: UpdateTripDayInput }) =>
+      updateTripDay(tripId, input.dayNumber, input.patch),
+    onSuccess,
+  });
+  // Reorder days optimistically so the board reflects the drop instantly, then
+  // reconcile with the server-computed trip. On error, restore the snapshot.
+  const dayReorder = useMutation({
+    mutationFn: (order: number[]) => reorderTripDays(tripId, order),
+    onMutate: async (order: number[]) => {
+      await qc.cancelQueries({ queryKey: queryKeys.trip(tripId) });
+      const previous = qc.getQueryData<Trip>(queryKeys.trip(tripId));
+      if (previous) {
+        qc.setQueryData(queryKeys.trip(tripId), reorderDaysLocal(previous, order));
+      }
+      return { previous };
+    },
+    onError: (_err, _order, context) => {
+      if (context?.previous) {
+        qc.setQueryData(queryKeys.trip(tripId), context.previous);
+      }
+    },
+    onSuccess,
+  });
 
-  return { vote, comment, stop, expense, day };
+  return { vote, comment, stop, expense, day, dayUpdate, dayReorder };
 }

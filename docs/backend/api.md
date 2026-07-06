@@ -23,6 +23,8 @@ Hono routes under `apps/api/src/interfaces/http`. Reference:
 | GET | `/api/trips/:id` | Full trip (members, days, stops, expenses, budget) |
 | PATCH | `/api/trips/:id` | Rename a trip `{ title }` |
 | POST | `/api/trips/:id/days` | Append an empty itinerary day (next number, cycled color) |
+| PATCH | `/api/trips/:id/days/:number` | Update an itinerary day's structured metadata `{ date?, city?, dateLabel? }`; `date` is ISO `YYYY-MM-DD`, while `dateLabel` is a legacy fallback for imported data |
+| PUT | `/api/trips/:id/days/order` | Reorder itinerary days `{ order }`, where `order` is a permutation of the current day numbers. Days are renumbered `1..N` by their new position: each day keeps its city, legacy label, and stops, while its date and color are recomputed from the new position; stops are remapped to their day's new number, preserving per-day order |
 | POST | `/api/trips/:id/stops` | Insert a stop `{ day, index, name, time, lat?, lng?, area?, category?, cost?, costCurrency?, note? }`; when `lat`/`lng` are provided (geocode or map pick) they are used verbatim, otherwise the position is interpolated from neighbours. `category` is a `StopCategory`, `cost` a per-person estimate in minor units, `costCurrency` its ISO code (defaults to the trip currency), `note` free-form Markdown |
 | POST | `/api/trips/:id/stops/:stopId/vote` | Toggle current-user vote |
 | POST | `/api/trips/:id/stops/:stopId/comments` | Add a comment `{ text }` |
@@ -35,10 +37,14 @@ Hono routes under `apps/api/src/interfaces/http`. Reference:
 
 ## Dates
 
-The trip DTO carries `startDate` (ISO `YYYY-MM-DD`, or `""` when unknown). New
-trips default it to the creation date; each day's calendar date is derived on
-the client as `startDate + (day.number - 1)` and localized. Seed trips leave
-`startDate` empty and keep their descriptive per-day `dateLabel`.
+The trip DTO carries `startDate` (ISO `YYYY-MM-DD`, or `""` when unknown), and
+each day carries `date` (ISO `YYYY-MM-DD`, or `""` when unknown). New trips
+default day 1 to the trip start date; appended days derive their date from
+`startDate + (day.number - 1)`. Clients localize the ISO value for display.
+`dateLabel` remains only as a legacy fallback for imported descriptive labels.
+Because day dates are positional, reordering days (`PUT …/days/order`)
+resequences each day's date from its new position while its city and stops
+travel with it.
 
 ## Budget payload
 

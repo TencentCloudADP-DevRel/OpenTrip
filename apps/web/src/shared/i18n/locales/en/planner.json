@@ -48,7 +48,22 @@
     "currencyLabel": "Currency",
     "notePlaceholder": "Notes — Markdown & images supported",
     "add": "Add",
-    "voteCount": "▲ {{count}}"
+    "voteCount": "▲ {{count}}",
+    "reorderAria": "Drag to reorder day {{n}}",
+    "dayMenu": {
+      "label": "Day {{n}}",
+      "edit": "Edit day details",
+      "useGeneratedLocation": "Use schedule location"
+    },
+    "dayDialog": {
+      "title": "Edit day {{n}}",
+      "description": "Choose the real date and location stored on this schedule card.",
+      "date": "Date",
+      "cityLabel": "Location",
+      "cityPlaceholder": "Select location",
+      "useGenerated": "Use schedule location: {{location}}",
+      "save": "Save"
+    }
   },
   "category": {
     "Sight": "Sightseeing",

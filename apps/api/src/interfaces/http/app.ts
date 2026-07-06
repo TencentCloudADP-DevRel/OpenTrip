@@ -54,6 +54,27 @@ const renameTripSchema = z.object({
   title: z.string().trim().min(1).max(120),
 });
 
+const dayNumberSchema = z.coerce.number().int().positive();
+
+const updateDaySchema = z
+  .object({
+    date: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .or(z.literal(""))
+      .optional(),
+    dateLabel: z.string().trim().max(40).optional(),
+    city: z.string().trim().max(80).optional(),
+  })
+  .refine((value) => value.date !== undefined || value.dateLabel !== undefined || value.city !== undefined, {
+    message: "At least one day field is required",
+  });
+
+const reorderDaysSchema = z.object({
+  order: z.array(z.number().int().positive()).min(1),
+});
+
 const expenseSchema = z.object({
   description: z.string().min(1),
   amount: z.number().positive(),
@@ -146,6 +167,17 @@ export function createApp(container: Container) {
   guard.post("/trips/:id/days", async (c) =>
     ok(c, await tripService.addDay(c.req.param("id")), 201),
   );
+
+  guard.put("/trips/:id/days/order", async (c) => {
+    const { order } = reorderDaysSchema.parse(await c.req.json());
+    return ok(c, await tripService.reorderDays(c.req.param("id"), order));
+  });
+
+  guard.patch("/trips/:id/days/:day", async (c) => {
+    const dayNumber = dayNumberSchema.parse(c.req.param("day"));
+    const input = updateDaySchema.parse(await c.req.json());
+    return ok(c, await tripService.updateDay(c.req.param("id"), dayNumber, input));
+  });
 
   guard.post("/trips/:id/stops", async (c) => {
     const input = insertStopSchema.parse(await c.req.json());

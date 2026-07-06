@@ -39,11 +39,11 @@ function members(): TripSnapshot["members"] {
 }
 
 const DAYS: TripSnapshot["days"] = [
-  { number: 1, dateLabel: "Mon, Oct 12", city: "Tokyo", color: "#3f6fc9" },
-  { number: 2, dateLabel: "Tue, Oct 13", city: "Tokyo", color: "#305bb0" },
-  { number: 3, dateLabel: "Wed, Oct 14", city: "Tokyo → Kyoto", color: "#28304a" },
-  { number: 4, dateLabel: "Thu, Oct 15", city: "Kyoto", color: "#3c8f6f" },
-  { number: 5, dateLabel: "Fri, Oct 16", city: "Kyoto → Osaka", color: "#6d788f" },
+  { number: 1, date: "2025-10-12", dateLabel: "", city: "Tokyo", color: "#3f6fc9" },
+  { number: 2, date: "2025-10-13", dateLabel: "", city: "Tokyo", color: "#305bb0" },
+  { number: 3, date: "2025-10-14", dateLabel: "", city: "Tokyo → Kyoto", color: "#28304a" },
+  { number: 4, date: "2025-10-15", dateLabel: "", city: "Kyoto", color: "#3c8f6f" },
+  { number: 5, date: "2025-10-16", dateLabel: "", city: "Kyoto → Osaka", color: "#6d788f" },
 ];
 
 interface RawStop {
@@ -117,7 +117,7 @@ function buildJapan(): SeedTrip {
     title: "Japan · Autumn",
     status: "active",
     currency: "JPY",
-    startDate: "",
+    startDate: "2025-10-12",
     ownerId: "demo",
     members: members(),
     days: DAYS,

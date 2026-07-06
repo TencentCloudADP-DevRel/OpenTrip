@@ -25,6 +25,9 @@ export interface MemberSnapshot {
 
 export interface DaySnapshot {
   number: number;
+  /** ISO `YYYY-MM-DD` date for this itinerary day, or "" when unknown. */
+  date: string;
+  /** Legacy display label kept for imported/seeded data that has no ISO date. */
   dateLabel: string;
   city: string;
   color: string;

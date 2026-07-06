@@ -39,5 +39,9 @@ export interface TripRepository {
   rename(id: string, title: string): Promise<void>;
   /** Persist a newly appended itinerary day. */
   addDay(tripId: string, day: DaySnapshot): Promise<void>;
+  /** Update display metadata for an existing itinerary day. */
+  updateDay(tripId: string, day: DaySnapshot): Promise<void>;
+  /** Rewrite all itinerary days and stops after a reorder, in one transaction. */
+  reorderDays(trip: Trip): Promise<void>;
   save(trip: Trip): Promise<void>;
 }

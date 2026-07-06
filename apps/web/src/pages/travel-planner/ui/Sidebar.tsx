@@ -1,14 +1,12 @@
 import { useTranslation } from "react-i18next";
 import type { Trip } from "@/entities/trip";
-import { findDay } from "@/entities/trip";
-import { formatMoney } from "@/shared/lib";
-import { cn, interactive } from "@/shared/lib";
+import { dayDateLabel, findDay } from "@/entities/trip";
 import { DayPills } from "./DayPills";
+import { StopCard } from "./StopCard";
 import { StopDetail } from "./StopDetail";
 
 export interface SidebarProps {
   trip: Trip;
-  numbers: Map<string, number>;
   day: number;
   onDayChange: (day: number) => void;
   selectedStopId: string | null;
@@ -21,8 +19,8 @@ export interface SidebarProps {
 }
 
 export function Sidebar(props: SidebarProps) {
-  const { t } = useTranslation("planner");
-  const { trip, numbers, day, selectedStopId } = props;
+  const { t, i18n } = useTranslation("planner");
+  const { trip, day, selectedStopId } = props;
 
   const selectedStop = selectedStopId
     ? trip.stops.find((s) => s.id === selectedStopId)
@@ -64,109 +62,38 @@ export function Sidebar(props: SidebarProps) {
             {visibleDays.map((d) => {
               const dayStops = trip.stops.filter((s) => s.day === d.number);
               return (
-                <div key={d.number}>
+                <div key={d.number} className="flex flex-col gap-2.5 pb-2.5">
                   <div className="sticky top-0 z-[2] flex items-center gap-2 border-y border-border bg-card px-4 py-2">
                     <span
                       className="size-2.5 flex-none rounded-full"
                       style={{ background: d.color }}
                     />
                     <span className="text-sm font-semibold text-foreground">
-                      {t("days.groupLabel", { n: d.number, date: d.dateLabel })}
+                      {t("days.groupLabel", {
+                        n: d.number,
+                        date: dayDateLabel(trip, d, i18n.language),
+                      })}
                     </span>
                     <span className="font-mono text-[11px] text-muted-foreground">
                       {findDay(trip, d.number)?.city}
                     </span>
                   </div>
-                  {dayStops.map((s) => {
-                    const voted = s.votes.includes(props.currentUserId);
-                    const selected = s.id === selectedStopId;
-                    return (
-                      <button
+                  <div className="flex flex-col gap-2.5 px-4">
+                    {dayStops.map((s) => (
+                      <StopCard
                         key={s.id}
-                        type="button"
-                        onClick={() => props.onSelectStop(s.id)}
-                        className={cn(
-                          `flex w-full items-center gap-2.5 px-4 py-2.5 text-left ${interactive}`,
-                          selected ? "bg-brand-muted" : "hover:bg-muted",
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "flex size-6 flex-none items-center justify-center text-[11px] font-semibold tabular-nums text-white",
-                            s.transit ? "rounded-[7px]" : "rounded-full",
-                          )}
-                          style={{ background: d.color }}
-                        >
-                          {numbers.get(s.id)}
-                        </span>
-                        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                          <span className="truncate text-base font-medium">
-                            {s.name}
-                          </span>
-                          <span className="truncate text-xs text-muted-foreground tabular-nums">
-                            {s.time}
-                            {" · "}
-                            {s.area}
-                            {s.cost
-                              ? ` · ${t("detail.perPerson", {
-                                  amount: formatMoney(
-                                    s.cost,
-                                    s.costCurrency || trip.currency,
-                                  ),
-                                })}`
-                              : ""}
-                          </span>
-                        </span>
-                        <span className="flex flex-none items-center gap-1.5">
-                          <span
-                            className={cn(
-                              "inline-flex h-[22px] items-center gap-1 rounded-sm px-1.5 text-[11px] tabular-nums",
-                              voted
-                                ? "bg-brand-muted text-corn-600"
-                                : "bg-secondary text-muted-foreground",
-                            )}
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              width="11"
-                              height="11"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              aria-hidden="true"
-                            >
-                              <path d="M18 15l-6-6-6 6" />
-                            </svg>
-                            {s.votes.length}
-                          </span>
-                          {s.comments.length ? (
-                            <span className="inline-flex h-[22px] items-center gap-1 rounded-sm bg-secondary px-1.5 text-[11px] text-muted-foreground tabular-nums">
-                              <svg
-                                viewBox="0 0 24 24"
-                                width="11"
-                                height="11"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                aria-hidden="true"
-                              >
-                                <path d="M21 11.5a8.38 8.38 0 0 1-9 8.36 8.5 8.5 0 0 1-3.9-.94L3 20l1.08-4.1A8.5 8.5 0 1 1 21 11.5z" />
-                              </svg>
-                              {s.comments.length}
-                            </span>
-                          ) : null}
-                        </span>
-                      </button>
-                    );
-                  })}
+                        trip={trip}
+                        stop={s}
+                        color={d.color}
+                        selected={s.id === selectedStopId}
+                        onSelect={props.onSelectStop}
+                      />
+                    ))}
+                  </div>
                 </div>
               );
             })}
-            <div className="h-3" />
+            <div className="h-1" />
           </div>
         </>
       )}

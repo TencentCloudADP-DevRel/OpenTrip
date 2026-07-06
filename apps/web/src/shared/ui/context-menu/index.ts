@@ -3,6 +3,7 @@ export {
   ContextMenuTrigger,
   ContextMenuPopup,
   ContextMenuItem,
+  ContextMenuGroup,
   ContextMenuSeparator,
   ContextMenuGroupLabel,
   ContextMenuPrimitive,

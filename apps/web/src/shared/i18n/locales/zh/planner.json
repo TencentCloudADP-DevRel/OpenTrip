@@ -47,7 +47,22 @@
     "currencyLabel": "货币",
     "notePlaceholder": "备注 — 支持 Markdown 与图片",
     "add": "添加",
-    "voteCount": "▲ {{count}}"
+    "voteCount": "▲ {{count}}",
+    "reorderAria": "拖动以重新排序第 {{n}} 天",
+    "dayMenu": {
+      "label": "第 {{n}} 天",
+      "edit": "编辑日期和位置",
+      "useGeneratedLocation": "使用日程位置"
+    },
+    "dayDialog": {
+      "title": "编辑第 {{n}} 天",
+      "description": "选择存储在这张日程卡片上的真实日期和位置。",
+      "date": "日期",
+      "cityLabel": "位置",
+      "cityPlaceholder": "选择位置",
+      "useGenerated": "使用日程位置：{{location}}",
+      "save": "保存"
+    }
   },
   "category": {
     "Sight": "观光",

@@ -20,6 +20,7 @@ describe("Trip aggregate", () => {
     expect(s.days).toHaveLength(1);
     // Start date is a real ISO date so day labels can show actual dates.
     expect(s.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(s.days[0]!.date).toBe(s.startDate);
     expect(s.days[0]!.dateLabel).toBe("");
     expect(s.members).toEqual([
       expect.objectContaining({ id: "u1", initials: "AL", image: null, isCurrentUser: true }),
@@ -41,9 +42,73 @@ describe("Trip aggregate", () => {
     const trip = Trip.create({ title: "Kyoto" }, { id: "u1", name: "Ada" });
     const day = trip.addDay();
     expect(day.number).toBe(2);
+    expect(day.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(day.dateLabel).toBe("");
     expect(day.color).not.toBe(trip.toSnapshot().days[0]!.color);
     expect(trip.toSnapshot().days).toHaveLength(2);
+  });
+
+  it("updates itinerary day display metadata", () => {
+    const trip = freshTrip();
+    const day = trip.updateDay(4, {
+      date: "2025-10-15",
+      city: "  Kyoto  ",
+    });
+
+    expect(day).toMatchObject({
+      number: 4,
+      date: "2025-10-15",
+      city: "Kyoto",
+    });
+    expect(trip.toSnapshot().days.find((d) => d.number === 4)).toBe(day);
+  });
+
+  it("rejects updating a missing itinerary day", () => {
+    const trip = freshTrip();
+    expect(() => trip.updateDay(99, { city: "Kyoto" })).toThrow();
+  });
+
+  it("reorders days, renumbering sequentially and remapping stops", () => {
+    const trip = freshTrip();
+    const before = trip.toSnapshot();
+    const original = before.days.map((d) => d.number);
+    // Cities travel with each day so we can assert stops follow their day.
+    const cityByOld = new Map(before.days.map((d) => [d.number, d.city]));
+    const stopsByOldDay = new Map<number, string[]>();
+    for (const s of before.stops) {
+      stopsByOldDay.set(s.day, [...(stopsByOldDay.get(s.day) ?? []), s.id]);
+    }
+
+    // Move the last day to the front.
+    const moved = [
+      original[original.length - 1]!,
+      ...original.slice(0, original.length - 1),
+    ];
+    trip.reorderDays(moved);
+    const after = trip.toSnapshot();
+
+    // Days are renumbered 1..N in the new sequence.
+    expect(after.days.map((d) => d.number)).toEqual(
+      original.map((_, i) => i + 1),
+    );
+    // The day that moved to the front keeps its city but is now day 1.
+    expect(after.days[0]!.city).toBe(cityByOld.get(moved[0]!));
+    // Its stops now report day 1 in their original per-day order.
+    const nowDay1 = after.stops.filter((s) => s.day === 1).map((s) => s.id);
+    expect(nowDay1).toEqual(stopsByOldDay.get(moved[0]!) ?? []);
+    // Global stop order stays contiguous and grouped by the new day order.
+    const orders = after.stops.map((s) => s.order);
+    expect(orders).toEqual(orders.map((_, i) => i));
+    expect(after.stops.map((s) => s.day)).toEqual(
+      [...after.stops.map((s) => s.day)].sort((a, b) => a - b),
+    );
+  });
+
+  it("rejects a day order that is not a permutation", () => {
+    const trip = freshTrip();
+    const numbers = trip.toSnapshot().days.map((d) => d.number);
+    expect(() => trip.reorderDays([...numbers, 999])).toThrow();
+    expect(() => trip.reorderDays(numbers.slice(1))).toThrow();
   });
 
   it("rejects creating a trip with a blank title", () => {

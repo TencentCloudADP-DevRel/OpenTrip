@@ -14,7 +14,8 @@ only through aggregate methods.
 - **TripMember** — `{ id, name, shortName, initials, avatarBg, avatarFg,
   image, isCurrentUser }`. `image` is an optional avatar URL; the UI falls back
   to a colored circle when it is absent.
-- **TripDay** — `{ number, dateLabel, city, color }`.
+- **TripDay** — `{ number, date, dateLabel, city, color }`, where `date` is
+  ISO `YYYY-MM-DD` and `dateLabel` is a legacy fallback for imported labels.
 - **Stop** (entity) — `{ id, day, time, duration, name, area, category,
   lat, lng, cost, costCurrency, createdBy, transit, note, votes: MemberId[],
   comments: Comment[], order }`. `note` is optional Markdown. `costCurrency` is
@@ -48,6 +49,9 @@ only through aggregate methods.
   derived from `startDate` on the read side, so days carry no fake "Day N" text.
 - **addDay()** — appends an empty day with the next number and a cycled color;
   its calendar date is derived from `startDate`.
+- **updateDay(number, draft)** — updates an existing day's structured metadata
+  (`date` and/or `city`, with `dateLabel` retained as legacy fallback) without
+  renumbering the day or moving stops.
 - **addExpense(draft)** — requires a positive amount, a payer, and >= 1
   participant; split is equal across participants.
 - **balances()** — for each member, `paid - fairShare` where `fairShare` sums
@@ -74,7 +78,8 @@ allowed range at the edge.
 Defined in `domain/trip/ports`:
 
 - `TripRepository` — `findSummaries()`, `findById(id)`, `create(trip)`,
-  `rename(id, title)`, `addDay(tripId, day)`, `save(trip)`.
+  `rename(id, title)`, `addDay(tripId, day)`, `updateDay(tripId, day)`,
+  `save(trip)`.
 
 `domain/preferences/ports`:
 

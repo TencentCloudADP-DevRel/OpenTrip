@@ -33,6 +33,34 @@ export function addTripDay(tripId: string): Promise<Trip> {
   return apiFetch<Trip>(`/api/trips/${tripId}/days`, { method: "POST" });
 }
 
+export interface UpdateTripDayInput {
+  date?: string;
+  dateLabel?: string;
+  city?: string;
+}
+
+export function updateTripDay(
+  tripId: string,
+  dayNumber: number,
+  input: UpdateTripDayInput,
+): Promise<Trip> {
+  return apiFetch<Trip>(`/api/trips/${tripId}/days/${dayNumber}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+/** Reorder itinerary days to the given sequence of current day numbers. */
+export function reorderTripDays(
+  tripId: string,
+  order: number[],
+): Promise<Trip> {
+  return apiFetch<Trip>(`/api/trips/${tripId}/days/order`, {
+    method: "PUT",
+    body: JSON.stringify({ order }),
+  });
+}
+
 export interface InsertStopInput {
   day: number;
   index: number;

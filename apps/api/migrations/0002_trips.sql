@@ -29,6 +29,7 @@ CREATE INDEX IF NOT EXISTS trip_members_trip_idx ON trip_members(trip_id);
 CREATE TABLE IF NOT EXISTS trip_days (
   trip_id    text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
   number     integer NOT NULL,
+  date       text NOT NULL DEFAULT '',
   date_label text NOT NULL,
   city       text NOT NULL,
   color      text NOT NULL,

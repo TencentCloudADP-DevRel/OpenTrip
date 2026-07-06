@@ -315,7 +315,6 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
         >
           <Sidebar
             trip={trip}
-            numbers={numbers}
             day={day}
             onDayChange={(d) => {
               setDay(d);
@@ -369,7 +368,16 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
                   selectStop(id);
                 }}
                 onAddDay={() => actions.day.mutate()}
+                onUpdateDay={(dayNumber, patch) =>
+                  actions.dayUpdate.mutate({ dayNumber, patch })
+                }
+                onReorderDays={(order) => actions.dayReorder.mutate(order)}
                 addingDay={actions.day.isPending}
+                updatingDayNumber={
+                  actions.dayUpdate.isPending
+                    ? actions.dayUpdate.variables?.dayNumber
+                    : undefined
+                }
               />
             ) : (
               <BudgetBoard

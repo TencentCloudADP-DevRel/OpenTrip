@@ -7,6 +7,7 @@ import {
   type TripOwner,
   type TripRepository,
   type TripSummary,
+  type UpdateDayDraft,
 } from "../domain/trip";
 import { toTripDto, type TripDto } from "./dto";
 
@@ -41,6 +42,24 @@ export class TripService {
     const trip = await load(this.repo, tripId);
     const day = trip.addDay();
     await this.repo.addDay(tripId, day);
+    return toTripDto(trip);
+  }
+
+  async updateDay(
+    tripId: string,
+    dayNumber: number,
+    draft: UpdateDayDraft,
+  ): Promise<TripDto> {
+    const trip = await load(this.repo, tripId);
+    const day = trip.updateDay(dayNumber, draft);
+    await this.repo.updateDay(tripId, day);
+    return toTripDto(trip);
+  }
+
+  async reorderDays(tripId: string, order: number[]): Promise<TripDto> {
+    const trip = await load(this.repo, tripId);
+    trip.reorderDays(order);
+    await this.repo.reorderDays(trip);
     return toTripDto(trip);
   }
 

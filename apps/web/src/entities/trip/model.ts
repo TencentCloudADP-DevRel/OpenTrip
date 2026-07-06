@@ -6,6 +6,9 @@ export type TripStatus = "active" | "planning" | "settled";
 
 export interface TripDay {
   number: number;
+  /** ISO `YYYY-MM-DD` date for this itinerary day, or "" when unknown. */
+  date: string;
+  /** Legacy display label kept for imported data that has no ISO date. */
   dateLabel: string;
   city: string;
   color: string;

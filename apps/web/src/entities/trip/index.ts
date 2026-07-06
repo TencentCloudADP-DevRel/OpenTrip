@@ -5,4 +5,11 @@ export type {
   TripDay,
   TripStatus,
 } from "./model";
-export { stopNumbers, stopsForDay, dayColor, findDay, dayDateLabel } from "./lib";
+export {
+  stopNumbers,
+  stopsForDay,
+  dayColor,
+  findDay,
+  dayDateLabel,
+  reorderTripDays,
+} from "./lib";

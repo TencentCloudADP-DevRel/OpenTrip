@@ -2,6 +2,7 @@ export { Trip } from "./trip";
 export type {
   InsertStopDraft,
   AddExpenseDraft,
+  UpdateDayDraft,
   CreateTripDraft,
   TripOwner,
 } from "./trip";

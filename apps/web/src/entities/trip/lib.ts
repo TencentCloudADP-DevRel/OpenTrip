@@ -27,27 +27,99 @@ export function findDay(trip: Trip, day: number): TripDay | undefined {
   return trip.days.find((d) => d.number === day);
 }
 
+/** Day palette, cycled by day number. Mirrors the backend `DAY_COLORS`. */
+const DAY_COLORS = [
+  "#3f6fc9",
+  "#305bb0",
+  "#28304a",
+  "#3c8f6f",
+  "#6d788f",
+  "#8a5cc0",
+  "#c06a3c",
+];
+
+function dayColorFor(number: number): string {
+  return DAY_COLORS[(number - 1) % DAY_COLORS.length]!;
+}
+
+/** Reorder itinerary days to the given sequence of current day numbers,
+ * renumbering 1..N by position. Mirrors the server `Trip.reorderDays` so the
+ * UI can update optimistically before the mutation resolves. Returns a new
+ * Trip; the input is not mutated. `order` must be a permutation of the trip's
+ * day numbers, otherwise the trip is returned unchanged. */
+export function reorderTripDays(trip: Trip, order: number[]): Trip {
+  const isPermutation =
+    order.length === trip.days.length &&
+    new Set(order).size === order.length &&
+    order.every((n) => trip.days.some((d) => d.number === n));
+  if (!isPermutation) return trip;
+
+  const byNumber = new Map(trip.days.map((d) => [d.number, d]));
+  const oldToNew = new Map<number, number>();
+  const days: TripDay[] = order.map((oldNumber, i) => {
+    const newNumber = i + 1;
+    oldToNew.set(oldNumber, newNumber);
+    const day = byNumber.get(oldNumber)!;
+    return {
+      number: newNumber,
+      date: ISO_DATE.test(trip.startDate)
+        ? addDaysIso(trip.startDate, newNumber - 1)
+        : "",
+      dateLabel: day.dateLabel,
+      city: day.city,
+      color: dayColorFor(newNumber),
+    };
+  });
+
+  const stops = trip.stops
+    .map((s, i) => ({ stop: s, i }))
+    .map(({ stop, i }) => ({ stop: { ...stop, day: oldToNew.get(stop.day) ?? stop.day }, i }))
+    .sort((a, b) => a.stop.day - b.stop.day || a.i - b.i)
+    .map(({ stop }) => stop);
+
+  return { ...trip, days, stops };
+}
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Human calendar date for a given itinerary day, localized to `locale`.
- * Derived from the trip's ISO `startDate` offset by (number - 1) days; falls
- * back to the day's stored `dateLabel` when the trip has no machine date. */
+ * Uses the day's structured ISO date first; legacy text labels are fallback. */
 export function dayDateLabel(
   trip: Trip,
   day: TripDay,
   locale: string,
 ): string {
-  if (!ISO_DATE.test(trip.startDate)) return day.dateLabel;
-  const [y, m, d] = trip.startDate.split("-").map(Number) as [
+  if (ISO_DATE.test(day.date)) return formatIsoDate(day.date, locale);
+  if (day.dateLabel.trim()) return day.dateLabel;
+  if (!ISO_DATE.test(trip.startDate)) return "";
+  return formatIsoDate(addDaysIso(trip.startDate, day.number - 1), locale);
+}
+
+function formatIsoDate(date: string, locale: string): string {
+  const [y, m, d] = date.split("-").map(Number) as [
     number,
     number,
     number,
   ];
-  const dt = new Date(Date.UTC(y, m - 1, d + (day.number - 1)));
+  const dt = new Date(Date.UTC(y, m - 1, d));
   return new Intl.DateTimeFormat(locale, {
     weekday: "short",
     month: "short",
     day: "numeric",
     timeZone: "UTC",
   }).format(dt);
+}
+
+function addDaysIso(date: string, days: number): string {
+  const [y, m, d] = date.split("-").map(Number) as [
+    number,
+    number,
+    number,
+  ];
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  return [
+    dt.getUTCFullYear(),
+    String(dt.getUTCMonth() + 1).padStart(2, "0"),
+    String(dt.getUTCDate()).padStart(2, "0"),
+  ].join("-");
 }
