@@ -38,5 +38,5 @@ See [handoff-implementation.md](handoff-implementation.md).
   provider; invites are shared as links). Members join via an invite link with a
   configurable access scope, role, can-invite flag, and custom expiry.
 - Multi-currency conversion for expense storage and balances (amounts remain in
-  the trip currency; settle-up can *display* transfers in another currency via
-  the FX proxy — see [../backend/fx.md](../backend/fx.md)).
+  the trip currency; balances and settle-up can *display* amounts in another
+  currency via the FX proxy — see [../backend/fx.md](../backend/fx.md)).

@@ -16,7 +16,9 @@
         "close": "Close",
         "save": "Save",
         "collapseSidebar": "Collapse sidebar",
-        "expandSidebar": "Expand sidebar"
+        "expandSidebar": "Expand sidebar",
+        "scrollPrevious": "Scroll previous",
+        "scrollNext": "Scroll next"
     },
     "state": {
         "loading": "Loading…",

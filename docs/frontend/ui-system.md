@@ -27,7 +27,7 @@ Implemented in `apps/web/src/shared/ui`, matching cossUI APIs:
 `button`, `badge`, `input`, `textarea`, `checkbox`, `tabs`, `card` (+ parts),
 `avatar`, `spinner`, `autocomplete`, `select`, `context-menu`, `tooltip`,
 `popover`, `preview-card`, `dialog`, `collapsible`, `splitter`,
-`markdown-editor`. Each exposes a public `index.ts`.
+`scroll-edge-fade`, `markdown-editor`. Each exposes a public `index.ts`.
 
 `preview-card` is a hover/focus-triggered rich card (Base UI PreviewCard). Use
 it, rather than `tooltip`, when the hover content is structured (e.g. the
@@ -36,6 +36,13 @@ settle-up transfer breakdown in the budget board) instead of a short hint.
 `splitter` implements the WAI-ARIA APG Window Splitter pattern: a focusable
 separator with `aria-valuenow/min/max`, `aria-controls`, keyboard arrow-key
 resizing, `Enter` to collapse/restore, and `Home`/`End` to jump to extremes.
+
+`scroll-edge-fade` wraps an overflowing strip (horizontal or vertical) with
+CSS `mask-image` edge fades. Mask width appears only on overflowing ends
+(ease-out). Optional circular chevron page controls (`showControls`, default
+on) page by roughly one viewport with the shared ease-out curve — turn them
+off for free-scroll lists that only need fades. Used by DayPills (horizontal
++ controls) and the planner Sidebar stop list (vertical, fades only).
 
 Application icons come from `lucide-react`; feature and widget code does not
 duplicate handwritten SVG paths. Decorative icons are hidden from assistive
@@ -101,6 +108,10 @@ skill).
 - **List entrance**: put `.wf-enter-stagger` on the parent and `.wf-enter` on
   children; the stagger step is `--enter-stagger` (60ms). Children never
   hardcode `animationDelay`.
+- **Scroll edge fade**: use `ScrollEdgeFade` (`shared/ui/scroll-edge-fade`) for
+  overflowing strips — CSS `mask-image` edge fades (`.wf-scroll-edge-fade`) +
+  circular page controls with ease-out enter/exit and ease-out page scrolling.
+  Do not re-implement per feature.
 - **Popovers** (Select, ContextMenu, Autocomplete, Tooltip, Dialog) scale from
   their trigger via `origin-(--transform-origin)` and Base UI
   `data-starting-style`/`data-ending-style`; only modals stay centered.

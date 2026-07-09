@@ -50,7 +50,9 @@ settle-up display conversion; not for payment execution.
 
 ## UI
 
-The budget **Settle up** card lets the viewer pick a display currency. Transfer
-amounts convert with the rate table; hovering a transfer row shows a PreviewCard
-with the rate, original amount, provider date, and the existing settlement
-derivation. Trip balances and expense totals stay in the trip currency.
+The budget **Balances** and **Settle up** cards share one display-currency
+picker. Net balances, paid/share subtotals, and transfer amounts convert with
+the rate table; amounts re-reveal with a scramble animation when the currency
+changes. Hovering a transfer row shows a PreviewCard with the rate, original
+amount, provider date, and the existing settlement derivation. Expense list
+totals stay in each expense's (or the trip) currency.

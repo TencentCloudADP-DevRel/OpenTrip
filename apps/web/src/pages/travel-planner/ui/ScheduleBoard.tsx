@@ -165,6 +165,7 @@ export function ScheduleBoard({
   const dayNumbers = trip.days.map((d) => d.number);
   const drag = useDayReorderDrag(dayNumbers, onReorderDays);
   const stopDrag = useStopMoveDrag(trip, onMoveStop);
+  const pan = useBoardPan();
   const setGridRef = useCallback(
     (el: HTMLDivElement | null) => {
       drag.gridRef.current = el;
@@ -209,7 +210,19 @@ export function ScheduleBoard({
     );
 
   return (
-    <div className="h-full min-h-0 overflow-auto p-[62px_22px_20px]">
+    <div
+      ref={pan.scrollerRef}
+      onPointerDown={pan.onPointerDown}
+      onPointerMove={pan.onPointerMove}
+      onPointerUp={pan.onPointerUp}
+      onPointerCancel={pan.onPointerUp}
+      className={cn(
+        "scrollbar-none h-full min-h-0 overflow-auto p-[62px_22px_20px]",
+        "[&_button:not([data-drag-handle])]:cursor-pointer [&_input]:cursor-text [&_textarea]:cursor-text",
+        pan.active ? "cursor-grabbing select-none" : "cursor-grab",
+        (drag.active || stopDrag.active) && "select-none",
+      )}
+    >
       <div
         ref={setGridRef}
         className={cn(
@@ -376,6 +389,75 @@ interface DragState {
 /** Pointer distance (px) before a press on a day header becomes a drag, so a
  * plain click or right-click still reaches the context menu. */
 const DRAG_THRESHOLD = 4;
+
+/** Interactive / drag surfaces that must not start board panning. */
+const BOARD_PAN_BLOCK =
+  'a, button, input, textarea, select, label, [role="button"], [role="menuitem"], [contenteditable="true"], [data-drag-handle], [data-no-pan]';
+
+/**
+ * Grab-to-pan the schedule board on empty space. Interactive controls and
+ * day/stop drag handles opt out via {@link BOARD_PAN_BLOCK}.
+ */
+function useBoardPan() {
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const session = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    scrollLeft: number;
+    scrollTop: number;
+  } | null>(null);
+  const [active, setActive] = useState(false);
+
+  const end = useCallback((el: HTMLDivElement, pointerId: number) => {
+    if (el.hasPointerCapture(pointerId)) {
+      el.releasePointerCapture(pointerId);
+    }
+    session.current = null;
+    setActive(false);
+  }, []);
+
+  const onPointerDown = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    if (target.closest(BOARD_PAN_BLOCK)) return;
+    if (!el.contains(target)) return;
+
+    session.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      scrollLeft: el.scrollLeft,
+      scrollTop: el.scrollTop,
+    };
+    el.setPointerCapture(e.pointerId);
+    setActive(true);
+    e.preventDefault();
+  }, []);
+
+  const onPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const el = scrollerRef.current;
+    const s = session.current;
+    if (!el || !s || s.pointerId !== e.pointerId) return;
+    el.scrollLeft = s.scrollLeft - (e.clientX - s.startX);
+    el.scrollTop = s.scrollTop - (e.clientY - s.startY);
+  }, []);
+
+  const onPointerUp = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      const el = scrollerRef.current;
+      const s = session.current;
+      if (!el || !s || s.pointerId !== e.pointerId) return;
+      end(el, e.pointerId);
+    },
+    [end],
+  );
+
+  return { scrollerRef, active, onPointerDown, onPointerMove, onPointerUp };
+}
 
 /** Drag-to-reorder for day columns. Dragging a day header lifts the whole
  * column (header + stops move together) and shows a vertical line at the
@@ -903,6 +985,7 @@ function DayHeader({
       <ContextMenuTrigger className="block">
         <div
           {...dragHandleProps}
+          data-drag-handle=""
           aria-label={t("schedule.reorderAria", { n: day.number })}
           className={cn(
             "flex touch-none flex-col gap-0.5 rounded-xl border border-border bg-card p-2.5 shadow-xs",

@@ -19,11 +19,19 @@ Travel Planner SaaS — plan trips together, split everything.
 - [frontend/map.md](frontend/map.md)
 - [frontend/i18n.md](frontend/i18n.md)
 
+### Client API (web, mobile, other apps)
+
+Start here for multi-client development:
+
+- **[backend/api/README.md](backend/api/README.md)** — client HTTP contract index
+  (routes, envelopes, DTOs, multi-client notes; split by resource)
+- [backend/auth.md](backend/auth.md) — Better Auth mount, cookies/session, OAuth
+
 ### Backend (DDD + Hexagonal)
 
 - [backend/README.md](backend/README.md)
 - [backend/domain.md](backend/domain.md)
-- [backend/api.md](backend/api.md)
+- [backend/api/README.md](backend/api/README.md) — client-facing HTTP contract and DTOs
 - [backend/database.md](backend/database.md)
 - [backend/auth.md](backend/auth.md)
 - [backend/agent.md](backend/agent.md)

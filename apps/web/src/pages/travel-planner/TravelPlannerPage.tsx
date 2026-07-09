@@ -23,6 +23,7 @@ import {
 import { queryKeys } from "@/shared/config";
 import { stopNumbers } from "@/entities/trip";
 import type { Trip } from "@/entities/trip";
+import { CalendarRange, Map as MapIcon, Wallet } from "lucide-react";
 import { useRouter } from "@/app/router";
 import { useSession } from "@/shared/auth";
 import { cn } from "@/shared/lib";
@@ -414,9 +415,9 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
   }
 
   const tabItems = [
-    { value: "map", label: t("tabs.map") },
-    { value: "schedule", label: t("tabs.schedule") },
-    { value: "budget", label: t("tabs.budget") },
+    { value: "map", label: t("tabs.map"), icon: MapIcon },
+    { value: "schedule", label: t("tabs.schedule"), icon: CalendarRange },
+    { value: "budget", label: t("tabs.budget"), icon: Wallet },
   ];
 
   const selectStop = (id: string) => {
@@ -463,25 +464,25 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
           collapsed={sidebarCollapsed}
           onCollapsedChange={toggleSidebarCollapsed}
           top={
-            <div className="flex flex-col gap-2">
-              <BackButton
-                onBack={() => navigate("/")}
-                title={trip.title}
-                subtitle={headerSubtitle}
-                onRename={(title) => rename.mutate(title)}
-              />
-              <div className="px-1 pb-1 pt-2">
-                <Tabs
-                  items={tabItems}
-                  value={tab}
-                  onValueChange={(v) => {
-                    setNoteEditingStopId(null);
-                    setTab(v as Tab);
-                  }}
-                  aria-label={t("tabs.map")}
-                  className="flex w-full"
+            <div className="flex min-w-0 items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <BackButton
+                  onBack={() => navigate("/")}
+                  title={trip.title}
+                  subtitle={headerSubtitle}
+                  onRename={(title) => rename.mutate(title)}
                 />
               </div>
+              <Tabs
+                items={tabItems}
+                value={tab}
+                onValueChange={(v) => {
+                  setNoteEditingStopId(null);
+                  setTab(v as Tab);
+                }}
+                aria-label={t("tabs.map")}
+                className="mt-0.5 shrink-0"
+              />
             </div>
           }
         >

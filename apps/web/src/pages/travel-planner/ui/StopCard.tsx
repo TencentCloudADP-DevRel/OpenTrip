@@ -72,6 +72,7 @@ export function StopCard({
     <button
       type="button"
       {...dragHandleProps}
+      data-drag-handle={dragHandleProps ? "" : undefined}
       onClick={() => onSelect(stop.id)}
       className={cn(
         "flex flex-col gap-1 rounded-lg bg-card p-2.5 text-left shadow-[var(--shadow-border)] transition-[background-color,box-shadow,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:shadow-[var(--shadow-border-hover)] active:scale-[var(--press-scale)]",

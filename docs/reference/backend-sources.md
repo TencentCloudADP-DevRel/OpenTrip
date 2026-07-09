@@ -40,7 +40,7 @@
 - Hono is the `interfaces/http` adapter. The same app is served by a Node
   entry (`@hono/node-server`) for Docker and a Workers `fetch` entry for
   Cloudflare. Routes parse input, call use cases, and format responses.
-  See [../backend/api.md](../backend/api.md).
+  See [../backend/api/README.md](../backend/api/README.md).
 
 ## Better Auth
 

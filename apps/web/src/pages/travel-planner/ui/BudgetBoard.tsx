@@ -277,12 +277,39 @@ export function BudgetBoard({
       {/* Balances + settle up */}
       <div className="flex min-w-0 flex-col gap-[18px]">
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
-          <div className="border-b border-border px-4 py-3.5 font-heading text-base font-semibold tracking-tight">
-            {t("budget.balances")}
+          <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3.5">
+            <span className="font-heading text-base font-semibold tracking-tight">
+              {t("budget.balances")}
+            </span>
+            <SettlementCurrencySelect
+              value={settleCurrency}
+              onChange={setSettleCurrency}
+            />
           </div>
           {budget.balances.map((b) => {
             const m = memberOf(trip, b.memberId);
             const positive = b.net >= 0;
+            const displayNet = formatDisplayAmount(
+              Math.abs(b.net),
+              currency,
+              settleCurrency,
+              fxRates,
+              i18n.language,
+            );
+            const displayPaid = formatDisplayAmount(
+              b.paid,
+              currency,
+              settleCurrency,
+              fxRates,
+              i18n.language,
+            );
+            const displayShare = formatDisplayAmount(
+              b.share,
+              currency,
+              settleCurrency,
+              fxRates,
+              i18n.language,
+            );
             return (
               <div
                 key={b.memberId}
@@ -302,20 +329,31 @@ export function BudgetBoard({
                   </span>
                   <span className="truncate text-xs text-muted-foreground tabular-nums">
                     {t("budget.balanceSub", {
-                      paid: formatMoney(b.paid, currency),
-                      share: formatMoney(b.share, currency),
+                      paid: displayPaid,
+                      share: displayShare,
                     })}
                   </span>
                 </div>
-                <span
-                  className={cn(
-                    "flex-none whitespace-nowrap font-mono text-sm font-semibold tabular-nums",
-                    positive ? "text-success-foreground" : "text-destructive-foreground",
-                  )}
-                >
-                  {positive ? "+" : "−"}
-                  {formatMoney(Math.abs(b.net), currency)}
-                </span>
+                {needsFx && fxPending ? (
+                  <span
+                    className={cn(
+                      "flex-none whitespace-nowrap font-mono text-sm font-semibold tabular-nums",
+                      positive ? "text-success-foreground" : "text-destructive-foreground",
+                    )}
+                  >
+                    …
+                  </span>
+                ) : (
+                  <ScrambleText
+                    key={`${settleCurrency}:${positive ? "+" : "-"}:${displayNet}`}
+                    className={cn(
+                      "flex-none whitespace-nowrap font-mono text-sm font-semibold tabular-nums",
+                      positive ? "text-success-foreground" : "text-destructive-foreground",
+                    )}
+                  >
+                    {`${positive ? "+" : "−"}${displayNet}`}
+                  </ScrambleText>
+                )}
               </div>
             );
           })}
@@ -340,7 +378,7 @@ export function BudgetBoard({
             const from = memberOf(trip, s.from);
             const to = memberOf(trip, s.to);
             const trace = settlementTraces.get(`${s.from}\u0000${s.to}`);
-            const displayAmount = formatSettlementAmount(
+            const displayAmount = formatDisplayAmount(
               s.amount,
               currency,
               settleCurrency,
@@ -479,7 +517,9 @@ function SettlementCurrencySelect({
   );
 }
 
-function formatSettlementAmount(
+/** Format a trip-currency minor amount for display, converting when the viewer
+ * picks a different settle currency and rates are available. */
+function formatDisplayAmount(
   amount: number,
   tripCurrency: string,
   settleCurrency: string,

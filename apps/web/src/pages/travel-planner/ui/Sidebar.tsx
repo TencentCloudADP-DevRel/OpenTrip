@@ -3,6 +3,7 @@ import type { Trip } from "@/entities/trip";
 import { dayDateLabel, findDay } from "@/entities/trip";
 import type { UpdateStopInput } from "@/shared/api";
 import { DayWeatherIcon } from "@/features/weather";
+import { ScrollEdgeFade } from "@/shared/ui/scroll-edge-fade";
 import { DayPills } from "./DayPills";
 import { StopCard } from "./StopCard";
 import { StopDetail } from "./StopDetail";
@@ -33,10 +34,6 @@ export function Sidebar(props: SidebarProps) {
     : undefined;
 
   const visibleDays = day === 0 ? trip.days : trip.days.filter((d) => d.number === day);
-  const visibleCount =
-    day === 0
-      ? trip.stops.length
-      : trip.stops.filter((s) => s.day === day).length;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -56,19 +53,16 @@ export function Sidebar(props: SidebarProps) {
         />
       ) : (
         <>
-          <div className="flex flex-col gap-2.5 px-4 pt-3.5 pb-2.5">
-            <div className="flex items-baseline gap-2">
-              <span className="font-heading text-lg font-semibold tracking-tight">
-                {t("itinerary.title")}
-              </span>
-              <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
-                {t("itinerary.count", { count: visibleCount })}
-              </span>
-            </div>
+          <div className="px-4 pt-3.5 pb-2.5">
             <DayPills trip={trip} day={day} onDayChange={props.onDayChange} />
           </div>
 
-          <div className="flex-1 overflow-auto">
+          <ScrollEdgeFade
+            orientation="vertical"
+            showControls={false}
+            fadeSize={40}
+            className="min-h-0 flex-1"
+          >
             {visibleDays.map((d) => {
               const dayStops = trip.stops.filter((s) => s.day === d.number);
               return (
@@ -104,7 +98,7 @@ export function Sidebar(props: SidebarProps) {
               );
             })}
             <div className="h-1" />
-          </div>
+          </ScrollEdgeFade>
         </>
       )}
     </div>

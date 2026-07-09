@@ -49,7 +49,7 @@
 
 - [`docs/backend/README.md`](docs/backend/README.md)
 - [`docs/backend/domain.md`](docs/backend/domain.md)
-- [`docs/backend/api.md`](docs/backend/api.md)
+- [`docs/backend/api/README.md`](docs/backend/api/README.md) — client HTTP contract
 - [`docs/backend/database.md`](docs/backend/database.md)
 - [`docs/backend/auth.md`](docs/backend/auth.md)
 - [`docs/backend/agent.md`](docs/backend/agent.md)

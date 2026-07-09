@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { Trip } from "@/entities/trip";
 import { cn } from "@/shared/lib";
+import { ScrollEdgeFade } from "@/shared/ui/scroll-edge-fade";
 
 export function DayPills({
   trip,
@@ -18,7 +19,7 @@ export function DayPills({
   ];
 
   return (
-    <div className="scrollbar-none flex gap-1.5 overflow-x-auto overflow-y-hidden py-1.5">
+    <ScrollEdgeFade contentClassName="flex gap-1.5 py-1.5">
       {pills.map((p) => {
         const active = day === p.n;
         return (
@@ -38,6 +39,6 @@ export function DayPills({
           </button>
         );
       })}
-    </div>
+    </ScrollEdgeFade>
   );
 }

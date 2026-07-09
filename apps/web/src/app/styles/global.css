@@ -406,6 +406,61 @@ img {
   display: none;
 }
 
+/* ScrollEdgeFade — soft edge masks driven by --scroll-fade-start/end (px).
+ * Mask width interpolates with ease-out so fades grow/shrink as edges open. */
+.wf-scroll-edge-fade {
+  --scroll-fade-start: 0px;
+  --scroll-fade-end: 0px;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--scroll-fade-start),
+    #000 calc(100% - var(--scroll-fade-end)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--scroll-fade-start),
+    #000 calc(100% - var(--scroll-fade-end)),
+    transparent 100%
+  );
+  transition:
+    --scroll-fade-start var(--dur-slow) var(--ease-out),
+    --scroll-fade-end var(--dur-slow) var(--ease-out);
+}
+.wf-scroll-edge-fade[data-orientation="vertical"] {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--scroll-fade-start),
+    #000 calc(100% - var(--scroll-fade-end)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--scroll-fade-start),
+    #000 calc(100% - var(--scroll-fade-end)),
+    transparent 100%
+  );
+}
+@property --scroll-fade-start {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --scroll-fade-end {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wf-scroll-edge-fade {
+    transition: none;
+  }
+}
+
 /* Base UI Collapsible panel — animate height between 0 and the measured
  * content height (`--collapsible-panel-height`). The panel clips its content
  * so an inner scroll container can cap its own height independently. */

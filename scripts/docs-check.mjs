@@ -24,6 +24,7 @@ const required = [
   "docs/backend/README.md",
   "docs/backend/domain.md",
   "docs/backend/api.md",
+  "docs/backend/api/README.md",
   "docs/backend/database.md",
   "docs/backend/auth.md",
   "docs/operations/README.md",
