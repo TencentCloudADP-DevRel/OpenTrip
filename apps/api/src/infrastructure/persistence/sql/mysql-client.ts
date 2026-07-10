@@ -39,44 +39,58 @@ function normalizeParams(params: unknown[]): unknown[] {
   });
 }
 
-/** Build mysql2 SSL option from app config + URL hints. */
+/**
+ * Build mysql2 `ssl` option.
+ * Explicit `DATABASE_SSL=off` always wins (hosts that reject TLS with
+ * "Server does not support secure connection").
+ */
 export function resolveMysqlSsl(
   connectionString: string,
-  mode: DatabaseSslMode = "required",
+  mode: DatabaseSslMode = "off",
 ): SslOptions | undefined {
-  const urlHintsSsl =
-    /[?&](ssl|sslmode)=(true|require|required|verify|verify-ca|verify-full)/i.test(
-      connectionString,
-    ) ||
-    connectionString.includes("sslaccept=") ||
-    connectionString.includes("ssl-mode=");
+  if (mode === "off") return undefined;
 
-  const effective: DatabaseSslMode =
-    mode === "off" && urlHintsSsl ? "required" : mode;
-
-  if (effective === "off") return undefined;
-  // Managed MySQL (e.g. Tencent CynosDB) often presents a provider CA that is
-  // not in the default trust store; `required` enables TLS without CA pin.
-  if (effective === "required") {
+  // Managed MySQL often needs TLS without CA pin.
+  if (mode === "required") {
     return { rejectUnauthorized: false };
   }
+  // mode === "verify"
   return { rejectUnauthorized: true };
+}
+
+/** Strip SSL query params so the URI does not re-enable TLS. */
+function stripSslQueryParams(connectionString: string): string {
+  try {
+    const u = new URL(connectionString);
+    for (const key of ["ssl", "sslmode", "ssl-mode", "sslaccept"]) {
+      u.searchParams.delete(key);
+    }
+    // mysql2 URI form sometimes uses this fragment style
+    return u.toString().replace(/\?$/, "");
+  } catch {
+    return connectionString;
+  }
 }
 
 function poolConfig(
   connectionString: string,
   options?: MysqlClientOptions,
 ): mysql.PoolOptions {
-  const ssl = resolveMysqlSsl(connectionString, options?.ssl ?? "required");
-  return {
-    uri: connectionString,
+  const mode = options?.ssl ?? "off";
+  const ssl = resolveMysqlSsl(connectionString, mode);
+  // When TLS is off, strip ssl* query flags so mysql2 does not enable TLS
+  // from the connection string alone.
+  const uri =
+    mode === "off" ? stripSslQueryParams(connectionString) : connectionString;
+  const base: mysql.PoolOptions = {
+    uri,
     connectionLimit: options?.max ?? 10,
     dateStrings: false,
     supportBigNumbers: true,
-    // Enable TCP keep-alive; helps long-lived Node processes.
     enableKeepAlive: true,
-    ...(ssl ? { ssl } : {}),
   };
+  if (ssl) base.ssl = ssl;
+  return base;
 }
 
 export function createMysqlClient(
