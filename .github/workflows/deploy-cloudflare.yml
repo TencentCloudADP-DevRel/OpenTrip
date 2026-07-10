@@ -4,17 +4,14 @@
 #
 # Required repo secrets:
 #   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
-#   HYPERDRIVE_ID — Cloudflare Hyperdrive config id (injected at deploy; never commit)
-# Worker secrets synced when present (never commit values):
-#   DATABASE_URL — optional direct connect fallback; also used for prisma migrate/seed
-#   BETTER_AUTH_SECRET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY,
-#   AI_API_KEY, OPENWEATHERMAP_API_KEY, GOOGLE_CLIENT_ID,
-#   GOOGLE_CLIENT_SECRET, GOOGLE_MAPS_API_KEY, CAPTCHA_SECRET_KEY
+#   HYPERDRIVE_ID — Hyperdrive config id (deploy inject only; never commit)
+#   DATABASE_URL  — origin Postgres/MySQL URL for CI migrations only (not Worker runtime)
+# Worker secrets synced when present:
+#   BETTER_AUTH_SECRET, S3_*, AI_API_KEY, GOOGLE_*, etc.
+#   (Do NOT need DATABASE_URL on the Worker when using Hyperdrive.)
 #
-# Optional repository Variables:
-#   DB_INIT_ON_START=true — one-shot DB bootstrap during deploy
-#   DB_INIT_SEED=true     — also seed when init runs
-#   DATABASE_PROVIDER     — postgres (default in wrangler) | mysql
+# Production best practice: every API deploy runs `prisma migrate deploy`
+# against origin DATABASE_URL, then deploys the Worker (Hyperdrive at runtime).
 
 name: Deploy Cloudflare
 
@@ -35,8 +32,12 @@ on:
         description: "Sync GitHub secrets → Worker secrets after API deploy"
         type: boolean
         default: true
-      init_db:
-        description: "One-shot DB init (Postgres migrate or MySQL schema)"
+      skip_migrate:
+        description: "Skip database migrate (emergency only)"
+        type: boolean
+        default: false
+      seed_db:
+        description: "Also run demo seed after migrate"
         type: boolean
         default: false
 
@@ -97,36 +98,43 @@ jobs:
       - name: Install workspace deps (wrangler bundle needs package resolution)
         run: pnpm install --frozen-lockfile
 
-      - name: Init database schema
-        # Variable DB_INIT_ON_START=true for one deploy, then set false.
-        # Or enable "init_db" when manually running the workflow.
-        # Requires secret DATABASE_URL pointing at the origin DB (not Hyperdrive).
+      # Best practice: migrate on origin DATABASE_URL in CI, then deploy Worker
+      # which talks to the same DB via Hyperdrive (no DATABASE_URL needed at runtime).
+      - name: Migrate database (prisma migrate deploy)
         if: >-
-          vars.DB_INIT_ON_START == 'true' ||
-          vars.DB_INIT_ON_START == '1' ||
-          github.event.inputs.init_db == 'true'
+          github.event.inputs.skip_migrate != 'true' &&
+          vars.SKIP_DB_MIGRATE != 'true'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DATABASE_PROVIDER: ${{ vars.DATABASE_PROVIDER || 'postgres' }}
-          DATABASE_SSL: ${{ vars.DATABASE_SSL || 'off' }}
-          DB_INIT_SEED: ${{ vars.DB_INIT_SEED || 'false' }}
         run: |
           set -euo pipefail
           if [ -z "${DATABASE_URL:-}" ]; then
-            echo "::error::DATABASE_URL repository secret is required for DB init (origin connection string)"
+            echo "::error::Set repository secret DATABASE_URL to the PlanetScale/origin Postgres URL (used only for CI migrate, not Worker runtime)."
             exit 1
           fi
           PROVIDER="${DATABASE_PROVIDER:-postgres}"
-          echo "Running DB init (provider=$PROVIDER)…"
+          echo "Applying pending migrations (provider=$PROVIDER)…"
           if [ "$PROVIDER" = "mysql" ]; then
             pnpm --filter @opentrip/api db:mysql-init
           else
             pnpm --filter @opentrip/api db:migrate
-            if [ "${DB_INIT_SEED:-false}" = "true" ] || [ "${DB_INIT_SEED:-false}" = "1" ]; then
-              pnpm --filter @opentrip/api db:seed
-            fi
           fi
-          echo "Init finished. Set DB_INIT_ON_START=false before the next deploy."
+
+      - name: Seed database (optional)
+        if: >-
+          github.event.inputs.seed_db == 'true' ||
+          vars.DB_INIT_SEED == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_PROVIDER: ${{ vars.DATABASE_PROVIDER || 'postgres' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::error::DATABASE_URL is required for seed"
+            exit 1
+          fi
+          pnpm --filter @opentrip/api db:seed
 
       - name: Deploy API Worker
         env:
@@ -141,7 +149,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Intentionally NOT syncing DATABASE_URL to Worker when using Hyperdrive.
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}

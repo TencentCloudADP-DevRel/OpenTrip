@@ -52,7 +52,18 @@ Postgres. Prefer `SqlClient` for app code so both backends stay supported.
 ## Connection
 
 `DATABASE_URL` in the root `.env` points at the local database container.
-Production uses the same URL (or Hyperdrive) on Cloudflare Workers.
+
+**Production (best practice):**
+
+| Layer | Connection | Where it lives |
+| --- | --- | --- |
+| Worker runtime | Hyperdrive binding `HYPERDRIVE` | Deploy injects id from GitHub secret `HYPERDRIVE_ID` |
+| CI migrations | Origin Postgres URL | GitHub secret `DATABASE_URL` only (never required on Worker) |
+
+On every push to `main`, GitHub Actions runs `prisma migrate deploy` against
+origin `DATABASE_URL`, then deploys the Worker. You do **not** run migrations
+locally for each production release — only for local dev, or to draft a new
+migration file with `make db-migrate-dev`.
 
 ```ts
 import { createSqlClient } from "../infrastructure/persistence/sql";

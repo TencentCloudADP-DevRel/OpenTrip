@@ -77,39 +77,41 @@ Worker prefers Hyperdrive when the binding is present.
 
 ## 2. Migrate + seed / one-shot deploy init
 
-### One-shot init on deploy (`DB_INIT_ON_START`)
+### Migrations on every deploy (best practice)
 
-When the database does not exist yet, set a **repository Variable** (not a
-secret):
+CI always runs **before** Worker deploy:
 
-| Variable | Value | Notes |
-| --- | --- | --- |
-| `DB_INIT_ON_START` | `true` | Next deploy runs CREATE DATABASE + schema |
-| `DB_INIT_SEED` | `true` | Optional: also seed demo data |
-| `DATABASE_SSL` | `off` | Match Worker / origin TLS |
+```text
+prisma migrate deploy   # uses GitHub secret DATABASE_URL (origin)
+→ wrangler deploy       # Worker uses Hyperdrive at runtime
+```
 
-Requires secret `DATABASE_URL`. After a successful init deploy:
+| Secret | Role |
+| --- | --- |
+| `HYPERDRIVE_ID` | Inject Hyperdrive binding for the Worker |
+| `DATABASE_URL` | Origin Postgres URL **only for CI migrate/seed** |
 
-1. Set `DB_INIT_ON_START` to `false` (or delete the variable).
-2. Or use **Actions → Deploy Cloudflare → Run workflow** and check
-   **init_db** once without keeping the variable on.
+`prisma migrate deploy` is idempotent: if there are no new migration folders,
+it is a no-op. New schema changes: write a migration in a PR
+(`make db-migrate-dev` locally against a dev DB), merge to `main`, CI applies
+it to production automatically.
 
-The MySQL user needs `CREATE` privilege (or create the empty database in the
-cloud console first). Init script: `pnpm --filter @opentrip/api db:mysql-init`.
+Optional:
 
-### Manual migrate + seed
+- Workflow input **skip_migrate** — emergency skip
+- Variable `SKIP_DB_MIGRATE=true` — disable migrate until removed
+- Workflow input **seed_db** / variable `DB_INIT_SEED=true` — demo seed (rare in prod)
+
+### Manual migrate + seed (local / break-glass)
 
 ```bash
-# Postgres
+# Postgres (same as CI)
 DATABASE_URL="postgres://…" pnpm db:migrate
 DATABASE_URL="postgres://…" pnpm db:seed
 
-# MySQL
+# MySQL (legacy / alternate)
 DATABASE_PROVIDER=mysql DATABASE_URL="mysql://…" \
   pnpm --filter @opentrip/api db:mysql-init
-# or schema only (DB must already exist):
-#   pnpm --filter @opentrip/api db:mysql-schema
-DATABASE_PROVIDER=mysql DATABASE_URL="mysql://…" pnpm db:seed
 ```
 
 ## 3. API (Workers)
