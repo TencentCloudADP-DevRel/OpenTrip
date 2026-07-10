@@ -238,7 +238,10 @@ export function createRawMysqlPool(
   const config = connectionConfig(connectionString, options);
 
   // Minimal Pool surface used by Kysely / better-auth.
-  const ephemeral = {
+  // better-auth detects mysql via `"getConnection" in db` then does
+  // `new MysqlDialect(db)`. Kysely reads `config.pool` — real mysql2 Pool
+  // objects expose an internal `.pool`, so we self-reference the same way.
+  const ephemeral: Record<string, unknown> = {
     async getConnection() {
       const conn = await mysql.createConnection(config);
       // PoolConnection API: release() returns the connection to the pool.
@@ -284,6 +287,7 @@ export function createRawMysqlPool(
       return ephemeral;
     },
   };
+  ephemeral.pool = ephemeral;
 
   return ephemeral as unknown as MysqlPool;
 }
