@@ -13,6 +13,8 @@ coverage/
 deploy/**/secrets.json
 deploy/**/.secrets*.json
 deploy/**/.env.production
+deploy/**/mysql-origin.env
+deploy/**/*.local.env
 
 # logs
 *.log
