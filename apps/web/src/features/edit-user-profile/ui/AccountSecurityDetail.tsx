@@ -8,6 +8,7 @@ import {
   OTPFieldInput,
   OTPFieldSeparator,
 } from "@/shared/ui/otp-field";
+import { ScrambleText } from "@/shared/ui/scramble-text";
 import {
   useAccountSecurity,
   type SecurityView,
@@ -263,15 +264,19 @@ function TwoFactorEnable({
         <p className="text-xs text-pretty text-muted-foreground">
           {t("settings.profile.security.twoFactor.scanHint")}
         </p>
-        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-start">
           <TotpQr uri={totpUri} />
           {secret ? (
-            <p className="text-xs text-muted-foreground">
-              {t("settings.profile.security.twoFactor.manualSecret")}
-              <span className="mt-1 block break-all font-mono text-foreground tabular-nums">
-                {secret}
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">
+                {t("settings.profile.security.twoFactor.manualSecret")}
               </span>
-            </p>
+              <div className="flex min-w-0 items-center rounded-lg border border-input bg-card px-3 py-2 font-mono text-sm text-foreground">
+                <ScrambleText key={secret} className="break-all">
+                  {secret}
+                </ScrambleText>
+              </div>
+            </div>
           ) : null}
         </div>
         <label className="flex flex-col gap-1.5">
@@ -497,7 +502,7 @@ function TotpQr({ uri }: { uri: string }): React.ReactElement {
       alt=""
       width={180}
       height={180}
-      className="rounded-lg outline outline-1 outline-black/10"
+      className="rounded-lg"
     />
   );
 }
