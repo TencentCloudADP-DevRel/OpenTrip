@@ -212,6 +212,8 @@ export class AgentService {
       clientMessages?: AgentClientUIMessage[];
       approvalContinue?: boolean;
     },
+    /** Keep the Workers SQL pool open until stream persistence finishes. */
+    defer: Defer = () => {},
   ): Promise<Response> {
     const trip = await this.loadReadable(tripId, userId);
     const canEdit = trip.permissionsFor(userId).canEdit;
@@ -267,34 +269,53 @@ export class AgentService {
       return result;
     };
 
-    return this.model.streamChat({
-      trip: trip.toSnapshot(),
-      history,
-      clientMessages: input.clientMessages,
-      canEdit,
-      applyPatch: applyPatchSequentially,
-      onFinish: async (parts, messageId) => {
-        // Do not persist mid-turn tool-approval pauses — the client keeps the
-        // live UIMessage until addToolApprovalResponse continues the stream.
-        // Persisting approval-requested parts would leave a dead card in the
-        // shared history that other clients cannot resume.
-        const awaitingApproval = parts.some((p) => {
-          if (typeof p !== "object" || p === null) return false;
-          return (p as { state?: unknown }).state === "approval-requested";
-        });
-        if (awaitingApproval) return;
-
-        await this.appendMessage(trip, {
-          // Reuse the streamed UIMessage id so the client can drop the live
-          // bubble once history refetches (same key as useChat).
-          id: messageId,
-          role: "assistant",
-          parts,
-          actorUserId: null,
-          source: "chat",
-        });
-      },
+    // Hold the per-request pool open until onFinish persistence settles.
+    // Without this, Workers disposeAfterDeferred() ends the pool as soon as
+    // the SSE Response is returned, and appendMessage fails → the SPA clears
+    // the live buffer and the reply vanishes.
+    let releasePersistHold!: () => void;
+    const persistHold = new Promise<void>((resolve) => {
+      releasePersistHold = resolve;
     });
+    defer(persistHold);
+
+    try {
+      return await this.model.streamChat({
+        trip: trip.toSnapshot(),
+        history,
+        clientMessages: input.clientMessages,
+        canEdit,
+        applyPatch: applyPatchSequentially,
+        onFinish: async (parts, messageId) => {
+          try {
+            // Do not persist mid-turn tool-approval pauses — the client keeps the
+            // live UIMessage until addToolApprovalResponse continues the stream.
+            // Persisting approval-requested parts would leave a dead card in the
+            // shared history that other clients cannot resume.
+            const awaitingApproval = parts.some((p) => {
+              if (typeof p !== "object" || p === null) return false;
+              return (p as { state?: unknown }).state === "approval-requested";
+            });
+            if (awaitingApproval) return;
+
+            await this.appendMessage(trip, {
+              // Reuse the streamed UIMessage id so the client can drop the live
+              // bubble once history refetches (same key as useChat).
+              id: messageId,
+              role: "assistant",
+              parts,
+              actorUserId: null,
+              source: "chat",
+            });
+          } finally {
+            releasePersistHold();
+          }
+        },
+      });
+    } catch (err) {
+      releasePersistHold();
+      throw err;
+    }
   }
 
   /** Record a whitelisted write operation in the session and schedule the

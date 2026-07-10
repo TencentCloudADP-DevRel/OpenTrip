@@ -756,12 +756,19 @@ export function createApp(container: Container) {
     }
 
     // Streaming response: returned as-is, outside the { data } envelope.
-    return agentService!.streamChat(c.req.param("tripId")!, c.get("user")!.id, {
-      text,
-      clientMessageId,
-      clientMessages,
-      approvalContinue: hasApprovalResponse,
-    });
+    // Pass defer so onFinish persistence outlives the Response return and
+    // Workers do not pool.end() before the assistant row is written.
+    return agentService!.streamChat(
+      c.req.param("tripId")!,
+      c.get("user")!.id,
+      {
+        text,
+        clientMessageId,
+        clientMessages,
+        approvalContinue: hasApprovalResponse,
+      },
+      deferOf(c),
+    );
   });
 
   agent.get("/events", async (c) => {

@@ -12,6 +12,7 @@ import {
   type ToolSet,
   type UIMessage,
 } from "ai";
+import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { z } from "zod";
@@ -46,6 +47,42 @@ import {
 import type { AiConfig } from "../config";
 
 const NOTE_CONTEXT_MAX = 2_000;
+
+/** MiniMax Anthropic-compatible API (thinking blocks → AI SDK reasoning parts). */
+const MINIMAX_ANTHROPIC_BASE_URL = "https://api.minimaxi.com/anthropic";
+
+function isMiniMaxProvider(provider: string): boolean {
+  return provider.trim().toLowerCase() === "minimax";
+}
+
+/** MiniMax-M3 defaults thinking off; adaptive enables separate thinking blocks. */
+function isMiniMaxM3(model: string): boolean {
+  return /^minimax-m3\b/i.test(model.trim());
+}
+
+/** Build the LanguageModel for the configured provider. */
+function createAgentLanguageModel(config: AiConfig): LanguageModel {
+  if (isMiniMaxProvider(config.provider)) {
+    // Official MiniMax AI SDK docs recommend Anthropic-compatible format so
+    // thinking streams as distinct reasoning parts (not mixed into text).
+    // See https://platform.minimaxi.com/docs/api-reference/text-ai-sdk
+    const anthropic = createAnthropic({
+      apiKey: config.apiKey,
+      baseURL: config.baseUrl ?? MINIMAX_ANTHROPIC_BASE_URL,
+    });
+    return anthropic(config.model);
+  }
+  if (config.baseUrl) {
+    const provider = createOpenAICompatible({
+      name: config.provider,
+      baseURL: config.baseUrl,
+      apiKey: config.apiKey,
+    });
+    return provider(config.model);
+  }
+  const openai = createOpenAI({ apiKey: config.apiKey });
+  return openai(config.model);
+}
 
 function chatSystemPrompt(): string {
   const tools = writeToolNames().join(", ");
@@ -371,17 +408,20 @@ export class AiSdkAgentModel implements AgentModel {
     private lodgingService: LodgingService,
     private fileStorage: FileStorage,
   ) {
-    if (config.baseUrl) {
-      const provider = createOpenAICompatible({
-        name: config.provider,
-        baseURL: config.baseUrl,
-        apiKey: config.apiKey,
-      });
-      this.model = provider(config.model);
-    } else {
-      const provider = createOpenAI({ apiKey: config.apiKey });
-      this.model = provider(config.model);
+    this.model = createAgentLanguageModel(config);
+  }
+
+  /** Provider options that unlock MiniMax thinking as AI SDK reasoning parts. */
+  private providerOptions():
+    | { anthropic: { thinking: { type: "adaptive" } } }
+    | undefined {
+    if (
+      isMiniMaxProvider(this.config.provider) &&
+      isMiniMaxM3(this.config.model)
+    ) {
+      return { anthropic: { thinking: { type: "adaptive" } } };
     }
+    return undefined;
   }
 
   /** Read-only tools always available (no approval). Not part of trip ops.
@@ -456,6 +496,7 @@ export class AiSdkAgentModel implements AgentModel {
       tools,
       toolApproval: buildWriteToolApproval(request.canEdit),
       experimental_toolApprovalSecret: this.config.apiKey,
+      providerOptions: this.providerOptions(),
       // Private trip uploads: resolve via FileStorage, never HTTP-fetch localhost.
       experimental_download: createTripMediaDownload(
         this.fileStorage,
@@ -464,9 +505,13 @@ export class AiSdkAgentModel implements AgentModel {
       stopWhen: stepCountIs(this.config.maxToolSteps),
     });
 
+    // Keep generating (and firing UI-stream onFinish) even if the client aborts.
+    result.consumeStream();
+
     return result.toUIMessageStreamResponse({
       originalMessages,
       generateMessageId: generateId,
+      sendReasoning: true,
       onFinish: async ({ responseMessage }) => {
         await request.onFinish(
           responseMessage.parts as AgentMessagePart[],
@@ -490,6 +535,7 @@ export class AiSdkAgentModel implements AgentModel {
         request.trip.id,
       ),
       tools: this.readTools(request.trip.id),
+      providerOptions: this.providerOptions(),
       experimental_download: createTripMediaDownload(
         this.fileStorage,
         request.trip.id,
@@ -513,6 +559,7 @@ export class AiSdkAgentModel implements AgentModel {
       model: this.model,
       schema: addressedSchema,
       system: ADDRESSED_SYSTEM_PROMPT,
+      providerOptions: this.providerOptions(),
       prompt: [
         `Trip snapshot:\n${tripContext(request.trip)}`,
         `Recent session context:\n${recentContext || "(none)"}`,
@@ -539,6 +586,7 @@ export class AiSdkAgentModel implements AgentModel {
       model: this.model,
       schema: interventionSchema,
       system: EVALUATION_SYSTEM_PROMPT,
+      providerOptions: this.providerOptions(),
       prompt: [
         `Trip snapshot:\n${tripContext(request.trip)}`,
         `Recent session context:\n${recentContext || "(none)"}`,

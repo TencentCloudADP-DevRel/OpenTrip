@@ -111,8 +111,9 @@ export default {
         "Something went wrong",
       );
     } finally {
-      // Dispose only after deferred ambient agent work finishes so we do not
-      // race pool.end() against waitUntil(maybeReplyIfAddressed).
+      // Dispose only after deferred work finishes (ambient replies + streaming
+      // chat onFinish persistence) so we do not race pool.end() against
+      // SqlAgentSessionRepository.appendMessage.
       ctx.waitUntil(
         container.disposeAfterDeferred().catch((err) => {
           console.error("Failed to dispose DB pools:", err);

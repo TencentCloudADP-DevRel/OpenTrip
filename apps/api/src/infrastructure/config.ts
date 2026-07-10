@@ -364,10 +364,20 @@ function parseAiConfig(env: RawEnv): AiConfig | null {
     const apiKey = env.AI_API_KEY?.trim();
     if (!model || !apiKey) return null;
 
+    const provider = env.AI_PROVIDER?.trim() || "openai";
+    const baseUrlRaw = env.AI_BASE_URL?.trim() || null;
+    // MiniMax: default to Anthropic-compatible base so thinking streams as
+    // separate reasoning parts (OpenAI-compatible dumps thinking into text).
+    const baseUrl =
+        baseUrlRaw ??
+        (provider.toLowerCase() === "minimax"
+            ? "https://api.minimaxi.com/anthropic"
+            : null);
+
     return {
-        provider: env.AI_PROVIDER?.trim() || "openai",
+        provider,
         model,
-        baseUrl: env.AI_BASE_URL?.trim() || null,
+        baseUrl,
         apiKey,
         proactiveThreshold: parseNumber(
             env.AI_PROACTIVE_THRESHOLD,

@@ -157,13 +157,13 @@ dismiss). `POST …/apply` and `…/dismiss` remain as aliases.
 - Application: `apps/api/src/application/agent/agent-service.ts` — use cases,
   permission checks mirroring `TripService`, and the apply/conflict rules.
 - Infrastructure: `apps/api/src/infrastructure/ai/agent-model.ai-sdk.ts`
-  (Vercel AI SDK adapter; OpenAI or any OpenAI-compatible endpoint via
-  `AI_BASE_URL`) and
+  (Vercel AI SDK adapter; OpenAI, OpenAI-compatible via `AI_BASE_URL`, or
+  MiniMax via Anthropic-compatible API when `AI_PROVIDER=minimax`) and
   `apps/api/src/infrastructure/persistence/agent-repository.pg.ts` (raw `pg`).
 - Interfaces: agent sub-router in `apps/api/src/interfaces/http/app.ts`;
   routes return `404` when AI is not configured. Post-response work
-  (evaluations, ambient replies) uses `executionCtx.waitUntil` on Workers and a
-  floating promise on Node.
+  (evaluations, ambient replies, stream persistence) uses
+  `executionCtx.waitUntil` on Workers and a floating promise on Node.
 
 ## Configuration
 
@@ -172,12 +172,27 @@ disabled unless both `AI_MODEL` and `AI_API_KEY` are present.
 
 | Variable | Meaning | Default |
 | --- | --- | --- |
-| `AI_PROVIDER` | Provider label; also names the OpenAI-compatible provider | `openai` |
-| `AI_MODEL` | Model id (required) | — |
-| `AI_BASE_URL` | OpenAI-compatible base URL; empty uses the OpenAI API | — |
+| `AI_PROVIDER` | `openai`, `minimax`, or a label for OpenAI-compatible | `openai` |
+| `AI_MODEL` | Model id (required), e.g. `MiniMax-M2.7` | — |
+| `AI_BASE_URL` | Provider base URL. Empty: OpenAI API, or MiniMax Anthropic endpoint when `AI_PROVIDER=minimax` | — |
 | `AI_API_KEY` | API key (required) | — |
 | `AI_PROACTIVE_THRESHOLD` | Minimum confidence for a proactive suggestion | `0.7` |
 | `AI_MAX_TOOL_STEPS` | Tool-step cap per chat generation | `16` |
+
+### MiniMax
+
+Set `AI_PROVIDER=minimax` and `AI_MODEL` to a supported id (`MiniMax-M2.7`,
+`MiniMax-M3`, …). Leave `AI_BASE_URL` empty to use
+`https://api.minimaxi.com/anthropic` (Anthropic-compatible). That path streams
+`thinking` blocks as AI SDK `reasoning` parts so the panel can render them in
+`AgentReasoning`. Using a generic OpenAI-compatible MiniMax URL mixes thinking
+into plain text and does not produce separate reasoning chunks.
+
+For `MiniMax-M3`, the adapter sends
+`providerOptions.anthropic.thinking = { type: "adaptive" }` (M3 defaults
+thinking off). M2.x models always emit thinking.
+
+See [MiniMax AI SDK docs](https://platform.minimaxi.com/docs/api-reference/text-ai-sdk).
 
 On Cloudflare, set the same variables as Worker vars/secrets (see
 [../operations/cloudflare.md](../operations/cloudflare.md)).
@@ -206,5 +221,8 @@ snapshot — not a post-write re-read; see
 
 On Workers, Better Auth and `SqlAgentSessionRepository` use the
 `HYPERDRIVE_CACHE_DISABLED` binding (`poolFresh`) so history/events polls see
-fresh rows after writes. Deferred ambient replies are tracked on the container
-and finish before `pool.end()` (`disposeAfterDeferred`).
+fresh rows after writes. Deferred ambient replies **and** streaming chat
+`onFinish` persistence are tracked on the container and finish before
+`pool.end()` (`disposeAfterDeferred`). Without holding the pool for the SSE
+lifetime, `appendMessage` fails with `Cannot use a pool after calling end on
+the pool` and the SPA clears the live buffer — the reply appears to vanish.
