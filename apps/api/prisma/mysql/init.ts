@@ -72,29 +72,57 @@ function quoteIdent(name: string): string {
   return `\`${name}\``;
 }
 
+async function canUseDatabase(
+  fullUrl: string,
+  sslMode: DatabaseSslMode,
+): Promise<boolean> {
+  const ssl = resolveMysqlSsl(fullUrl, sslMode);
+  try {
+    const conn = await mysql.createConnection({
+      uri: fullUrl,
+      ...(ssl ? { ssl } : {}),
+    });
+    try {
+      await conn.query("SELECT 1");
+      return true;
+    } finally {
+      await conn.end();
+    }
+  } catch {
+    return false;
+  }
+}
+
 async function createDatabaseIfNeeded(
   serverUrl: string,
   database: string,
+  fullUrl: string,
   sslMode: DatabaseSslMode,
 ): Promise<void> {
-  const ssl = resolveMysqlSsl(serverUrl, sslMode);
-  let conn: mysql.Connection;
-  try {
-    conn = await mysql.createConnection({
-      uri: serverUrl,
-      ...(ssl ? { ssl } : {}),
-    });
-  } catch (err) {
-    // Fallback: connect with no default schema.
-    const bare = new URL(serverUrl);
-    bare.pathname = "/";
-    conn = await mysql.createConnection({
-      uri: bare.toString(),
-      ...(ssl ? { ssl } : {}),
-    });
+  // Already usable → nothing to create.
+  if (await canUseDatabase(fullUrl, sslMode)) {
+    console.log(`Database \`${database}\` is already reachable; skip CREATE.`);
+    return;
   }
 
+  const ssl = resolveMysqlSsl(serverUrl, sslMode);
+  let conn: mysql.Connection | undefined;
   try {
+    try {
+      conn = await mysql.createConnection({
+        uri: serverUrl,
+        ...(ssl ? { ssl } : {}),
+      });
+    } catch {
+      // Fallback: connect with no default schema.
+      const bare = new URL(serverUrl);
+      bare.pathname = "/";
+      conn = await mysql.createConnection({
+        uri: bare.toString(),
+        ...(ssl ? { ssl } : {}),
+      });
+    }
+
     const q = quoteIdent(database);
     console.log(`Ensuring database ${q} exists…`);
     await conn.query(
@@ -103,12 +131,20 @@ async function createDatabaseIfNeeded(
     console.log(`Database ${q} is ready.`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    // User may lack CREATE but admin already made the DB — re-check target URL.
+    if (await canUseDatabase(fullUrl, sslMode)) {
+      console.warn(
+        `CREATE DATABASE failed (${msg}); target database is reachable anyway — continuing.`,
+      );
+      return;
+    }
     throw new Error(
       `Failed to CREATE DATABASE \`${database}\`: ${msg}\n` +
-        `Grant CREATE privilege to the MySQL user, or create the database in the cloud console first.`,
+        `The MySQL user needs CREATE privilege, or create an empty database ` +
+        `\`${database}\` in the cloud console and GRANT ALL on it to this user.`,
     );
   } finally {
-    await conn.end();
+    await conn?.end();
   }
 }
 
@@ -185,7 +221,7 @@ async function main() {
     `MySQL init: database=${database} ssl=${sslMode} seed=${process.env.DB_INIT_SEED ?? "false"}`,
   );
 
-  await createDatabaseIfNeeded(serverUrl, database, sslMode);
+  await createDatabaseIfNeeded(serverUrl, database, fullUrl, sslMode);
   await applySchema(fullUrl, sslMode);
 
   const seedFlag = process.env.DB_INIT_SEED?.trim().toLowerCase();
