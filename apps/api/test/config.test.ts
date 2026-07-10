@@ -112,3 +112,56 @@ describe("loadConfig storage", () => {
     ).toThrow('S3_FORCE_PATH_STYLE must be either "true" or "false"');
   });
 });
+
+describe("loadConfig email", () => {
+  it("defaults to console provider", () => {
+    const config = loadConfig({
+      ...BASE_ENV,
+      STORAGE_BACKEND: "fs",
+      STORAGE_ROOT: "/data",
+    });
+    expect(config.email).toEqual({
+      provider: "console",
+      from: "OpenTrip <noreply@localhost>",
+      resendApiKey: undefined,
+    });
+  });
+
+  it("loads resend when key and from are set", () => {
+    const config = loadConfig({
+      ...BASE_ENV,
+      STORAGE_BACKEND: "fs",
+      STORAGE_ROOT: "/data",
+      EMAIL_PROVIDER: "resend",
+      EMAIL_FROM: "OpenTrip <noreply@example.test>",
+      RESEND_API_KEY: "re_test",
+    });
+    expect(config.email).toEqual({
+      provider: "resend",
+      from: "OpenTrip <noreply@example.test>",
+      resendApiKey: "re_test",
+    });
+  });
+
+  it("rejects resend without API key or from", () => {
+    expect(() =>
+      loadConfig({
+        ...BASE_ENV,
+        STORAGE_BACKEND: "fs",
+        STORAGE_ROOT: "/data",
+        EMAIL_PROVIDER: "resend",
+        EMAIL_FROM: "OpenTrip <noreply@example.test>",
+      }),
+    ).toThrow("RESEND_API_KEY is required when EMAIL_PROVIDER=resend");
+
+    expect(() =>
+      loadConfig({
+        ...BASE_ENV,
+        STORAGE_BACKEND: "fs",
+        STORAGE_ROOT: "/data",
+        EMAIL_PROVIDER: "resend",
+        RESEND_API_KEY: "re_test",
+      }),
+    ).toThrow("EMAIL_FROM is required when EMAIL_PROVIDER=resend");
+  });
+});

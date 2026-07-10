@@ -42,7 +42,7 @@ Pushing to `main` runs [`.github/workflows/deploy-cloudflare.yml`](../../.github
 
 `BETTER_AUTH_SECRET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `AI_API_KEY`,
 `OPENWEATHERMAP_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
-`GOOGLE_MAPS_API_KEY`, `CAPTCHA_SECRET_KEY`.
+`GOOGLE_MAPS_API_KEY`, `CAPTCHA_SECRET_KEY`, `RESEND_API_KEY`.
 
 ```bash
 # Example: update one secret and re-sync on next deploy

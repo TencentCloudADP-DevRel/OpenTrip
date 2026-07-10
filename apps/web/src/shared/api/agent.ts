@@ -2,7 +2,12 @@ import type { Trip } from "@/entities/trip";
 import { apiFetch } from "./client";
 
 export type AgentMessageRole = "user" | "assistant" | "system";
-export type AgentMessageSource = "chat" | "mention" | "operation" | "threshold";
+export type AgentMessageSource =
+  | "chat"
+  | "mention"
+  | "operation"
+  | "threshold"
+  | "stop_comment";
 export type AgentSuggestionStatus = "pending" | "applied" | "stale" | "expired";
 export type AgentSeverity = "info" | "warning" | "critical";
 

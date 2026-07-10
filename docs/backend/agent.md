@@ -9,6 +9,9 @@ quiet unless asked or a change carries a material planning risk.
 
 - `agent_messages` is the single timeline per trip: member chat, `@agent`
   mentions, operation events (`source = operation`), and agent replies.
+  Stop-comment `@agent` threads use `source = stop_comment` and are rendered
+  in StopDetail (not the agent drawer); the ambient reply is also persisted
+  on the stop as a comment with `author = agent`.
 - `agent_suggestions` stores AI-proposed patches with `status`
   (`pending | applied | stale | expired`), the model's `severity`/`confidence`/
   `reason`, and the `trip_version` the patch was computed against.
@@ -23,7 +26,7 @@ quiet unless asked or a change carries a material planning risk.
 | --- | --- | --- |
 | Explicit chat with `@agent` | `POST …/agent/chat` | Streams a reply (AI SDK UI message stream). User and assistant rows are persisted with the **same UIMessage ids** the client `useChat` buffer uses, so the panel can dedupe live vs history while streaming |
 | Plain member message | `POST …/agent/messages` | Persists the message, then asks the model whether the agent was addressed. Explicit `@agent` or an AI-judged ask triggers an ambient reply in the background (lands via polling); member-to-member chatter stays silent |
-| `@agent` or `@Member` in a stop comment | `POST …/stops/:stopId/comments` | Mirrored into the shared session with the stop as context (`source = mention`). `@Member` mentions populate `mentionedUserIds` so the same client toast path as chat fires. Ambient agent reply runs **only** when `@agent` is present |
+| `@agent` or `@Member` in a stop comment | `POST …/stops/:stopId/comments` | Mirrored into the shared session with the stop as context (`source = stop_comment`). `@Member` mentions populate `mentionedUserIds` so the same client toast path as chat fires. Ambient agent reply runs **only** when `@agent` is present; the reply is written into that stop's comment thread (`author = agent`) and is **not** shown in the agent drawer |
 | Whitelisted write operation | stop insert/update/move, day update/delete/reorder, expense add/update | Recorded as an operation event, then evaluated asynchronously |
 
 ## Intervention policy
@@ -62,12 +65,15 @@ proactive `pendingPatch` stay in sync.
 | `routeCompute` | none (auto) | Route between waypoints via `GeoService` |
 | `routeMatrix` | none (auto) | Travel-time matrix via `GeoService` |
 | `reviewLookup` | none (auto) | Place reviews when the geo provider supports them |
+| `airbnbSearch` | none (auto) | Airbnb vacation-rental search via `LodgingService` |
+| `airbnbListingDetails` | none (auto) | Airbnb listing amenities/rules/description |
 | `readTripMedia` | none (auto) | Read a trip-owned upload (image/PDF/text) via AI SDK `toModelOutput`; URL must be this trip’s `/api/uploads/trips/…` path |
 | *(from registry)* | `user-approval` | All trip-scoped editor mutations (`renameTrip`, `insertStop`, …) |
 
-Geo tools are read-only and do not mutate trips. Adding a discovered place still
-uses `insertStop` (and approval). Provider selection and caching are documented
-in [geo.md](./geo.md).
+Geo and lodging tools are read-only and do not mutate trips. Adding a discovered
+place or stay still uses `insertStop` (and approval). Provider selection and
+caching for geo are documented in [geo.md](./geo.md); lodging (Airbnb scrape) in
+[lodging.md](./lodging.md).
 
 ### Multimodal (AI SDK file parts)
 
@@ -94,8 +100,9 @@ plain member message is evaluated with `isAddressed`; the agent replies only
 when it judges itself addressed (or when `@agent` is explicit). There is no
 message-count threshold.
 
-There is no product API for deleting a stop or expense yet. Invites, votes, and
-stop comments stay human-only.
+There is no product API for deleting a stop or expense yet. Invites and votes
+stay human-only. Stop comments are human-authored except for agent replies that
+land in the same thread after an explicit `@agent` mention.
 
 ## Approving a suggestion
 

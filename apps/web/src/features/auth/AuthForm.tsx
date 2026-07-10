@@ -1,13 +1,22 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { signIn, signUp } from "@/shared/auth";
+import { authClient, signIn, signUp } from "@/shared/auth";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
+import {
+  OTPField,
+  OTPFieldInput,
+  OTPFieldSeparator,
+} from "@/shared/ui/otp-field";
 import { toastManager } from "@/shared/ui/toast";
 import { config } from "@/shared/config";
 import { CaptchaField, type CaptchaFieldRef } from "./ui/CaptchaField";
 
 type Mode = "signIn" | "signUp";
+type Step = "credentials" | "otp";
+
+const OTP_LENGTH = 6;
+const RESEND_COOLDOWN_SECONDS = 60;
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -32,13 +41,31 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     );
 }
 
+function isEmailNotVerified(error: { code?: string; message?: string } | null | undefined) {
+    if (!error) return false;
+    const code = error.code?.toUpperCase() ?? "";
+    const message = error.message?.toLowerCase() ?? "";
+    return (
+        code === "EMAIL_NOT_VERIFIED" ||
+        message.includes("email not verified") ||
+        message.includes("email verification")
+    );
+}
+
+function captchaHeaders(token: string | null): Record<string, string> {
+    return { "x-captcha-response": token ?? "" };
+}
+
 export function AuthForm() {
     const { t } = useTranslation("auth");
     const [mode, setMode] = useState<Mode>("signIn");
+    const [step, setStep] = useState<Step>("credentials");
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [otp, setOtp] = useState("");
     const [pending, setPending] = useState(false);
+    const [resendIn, setResendIn] = useState(0);
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
     const captchaRef = useRef<CaptchaFieldRef>(null);
     const captchaEnabled =
@@ -46,48 +73,139 @@ export function AuthForm() {
         !!config.turnstileSiteKey;
 
     const isSignUp = mode === "signUp";
+    const ns = isSignUp ? "signUp" : "signIn";
 
-    function showAuthError() {
+    useEffect(() => {
+        if (resendIn <= 0) return;
+        const id = window.setTimeout(() => setResendIn((s) => s - 1), 1000);
+        return () => window.clearTimeout(id);
+    }, [resendIn]);
+
+    function showAuthError(description?: string) {
         toastManager.add({
             title: t("errors.toastTitle"),
-            description: t("errors.generic"),
+            description: description ?? t("errors.generic"),
             type: "error",
         });
     }
 
-    async function submit(e: React.FormEvent) {
+    function enterOtpStep() {
+        setOtp("");
+        setStep("otp");
+        setResendIn(RESEND_COOLDOWN_SECONDS);
+        captchaRef.current?.reset();
+    }
+
+    async function sendOtp(options?: { announce?: boolean }) {
+        if (captchaEnabled && !captchaToken) return false;
+
+        const result = await authClient.emailOtp.sendVerificationOtp({
+            email,
+            type: "email-verification",
+            fetchOptions: {
+                headers: captchaHeaders(captchaToken),
+            },
+        });
+
+        captchaRef.current?.reset();
+
+        if (result.error) {
+            showAuthError(t("errors.otpSend"));
+            return false;
+        }
+
+        setResendIn(RESEND_COOLDOWN_SECONDS);
+        if (options?.announce) {
+            toastManager.add({
+                title: t("otp.sent"),
+                type: "success",
+            });
+        }
+        return true;
+    }
+
+    async function submitCredentials(e: React.FormEvent) {
         e.preventDefault();
         if (captchaEnabled && !captchaToken) return;
 
         setPending(true);
         try {
-            const result = isSignUp
-                ? await signUp.email({
-                      name,
-                      email,
-                      password,
-                      fetchOptions: {
-                          headers: {
-                              "x-captcha-response": captchaToken ?? "",
-                          },
-                      },
-                  })
-                : await signIn.email({
-                      email,
-                      password,
-                      fetchOptions: {
-                          headers: {
-                              "x-captcha-response": captchaToken ?? "",
-                          },
-                      },
-                  });
+            if (isSignUp) {
+                const result = await signUp.email({
+                    name,
+                    email,
+                    password,
+                    fetchOptions: {
+                        headers: captchaHeaders(captchaToken),
+                    },
+                });
+                if (result.error) {
+                    showAuthError();
+                    captchaRef.current?.reset();
+                    return;
+                }
+                // requireEmailVerification: account created, OTP emailed via
+                // sendOnSignUp + overrideDefaultEmailVerification.
+                enterOtpStep();
+                return;
+            }
+
+            const result = await signIn.email({
+                email,
+                password,
+                fetchOptions: {
+                    headers: captchaHeaders(captchaToken),
+                },
+            });
             if (result.error) {
+                if (isEmailNotVerified(result.error)) {
+                    // sendOnSignIn already triggered an OTP; show the step.
+                    enterOtpStep();
+                    return;
+                }
                 showAuthError();
                 captchaRef.current?.reset();
             }
         } catch {
             showAuthError();
             captchaRef.current?.reset();
+        } finally {
+            setPending(false);
+        }
+    }
+
+    async function submitOtp(e: React.FormEvent) {
+        e.preventDefault();
+        if (otp.length !== OTP_LENGTH) return;
+
+        setPending(true);
+        try {
+            const result = await authClient.emailOtp.verifyEmail({
+                email,
+                otp,
+            });
+            if (result.error) {
+                showAuthError(t("errors.otpInvalid"));
+                setOtp("");
+                return;
+            }
+            // autoSignInAfterVerification issues the session cookie; Gate
+            // re-renders via useSession.
+        } catch {
+            showAuthError(t("errors.otpInvalid"));
+            setOtp("");
+        } finally {
+            setPending(false);
+        }
+    }
+
+    async function resendOtp() {
+        if (resendIn > 0 || pending) return;
+        if (captchaEnabled && !captchaToken) return;
+
+        setPending(true);
+        try {
+            await sendOtp({ announce: true });
         } finally {
             setPending(false);
         }
@@ -114,10 +232,101 @@ export function AuthForm() {
         }
     }
 
-    const ns = isSignUp ? "signUp" : "signIn";
+    function switchMode() {
+        setMode(isSignUp ? "signIn" : "signUp");
+        setStep("credentials");
+        setOtp("");
+        setResendIn(0);
+        captchaRef.current?.reset();
+    }
+
+    function backToCredentials() {
+        setStep("credentials");
+        setOtp("");
+        setResendIn(0);
+        captchaRef.current?.reset();
+    }
+
+    if (step === "otp") {
+        return (
+            <form
+                onSubmit={submitOtp}
+                className="flex flex-col gap-4 wf-enter-stagger"
+            >
+                <div className="wf-enter flex flex-col gap-1">
+                    <h1 className="text-2xl font-semibold tracking-[-0.01em] text-balance">
+                        {t("otp.title")}
+                    </h1>
+                    <p className="text-sm text-pretty text-muted-foreground">
+                        {t("otp.subtitle", { email })}
+                    </p>
+                </div>
+
+                <div className="wf-enter flex flex-col gap-2">
+                    <span className="text-sm font-medium">{t("otp.label")}</span>
+                    <OTPField
+                        length={OTP_LENGTH}
+                        value={otp}
+                        onValueChange={(value) => setOtp(value)}
+                        autoSubmit
+                        disabled={pending}
+                        aria-label={t("otp.label")}
+                    >
+                        <OTPFieldInput />
+                        <OTPFieldInput aria-label={t("otp.slot", { n: 2 })} />
+                        <OTPFieldInput aria-label={t("otp.slot", { n: 3 })} />
+                        <OTPFieldSeparator />
+                        <OTPFieldInput aria-label={t("otp.slot", { n: 4 })} />
+                        <OTPFieldInput aria-label={t("otp.slot", { n: 5 })} />
+                        <OTPFieldInput aria-label={t("otp.slot", { n: 6 })} />
+                    </OTPField>
+                </div>
+
+                <div className="wf-enter">
+                    <CaptchaField
+                        key="otp-resend"
+                        ref={captchaRef}
+                        onTokenChange={setCaptchaToken}
+                    />
+                </div>
+
+                <div className="wf-enter flex flex-col gap-2">
+                    <Button
+                        type="submit"
+                        size="lg"
+                        disabled={pending || otp.length !== OTP_LENGTH}
+                    >
+                        {t("otp.submit")}
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="lg"
+                        disabled={
+                            pending ||
+                            resendIn > 0 ||
+                            (captchaEnabled && !captchaToken)
+                        }
+                        onClick={resendOtp}
+                    >
+                        {resendIn > 0
+                            ? t("otp.resendIn", { seconds: resendIn })
+                            : t("otp.resend")}
+                    </Button>
+                    <button
+                        type="button"
+                        className="inline-flex min-h-10 items-center justify-center text-sm text-muted-foreground transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-foreground hover:underline active:scale-[var(--press-scale)]"
+                        onClick={backToCredentials}
+                    >
+                        {t("otp.back")}
+                    </button>
+                </div>
+            </form>
+        );
+    }
 
     return (
-        <form onSubmit={submit} className="flex flex-col gap-4">
+        <form onSubmit={submitCredentials} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
                 <h1 className="text-2xl font-semibold tracking-[-0.01em] text-balance">
                     {t(`${ns}.title`)}
@@ -199,9 +408,7 @@ export function AuthForm() {
             <button
                 type="button"
                 className="inline-flex min-h-10 items-center justify-center text-sm text-corn-600 transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:underline active:scale-[var(--press-scale)]"
-                onClick={() => {
-                    setMode(isSignUp ? "signIn" : "signUp");
-                }}
+                onClick={switchMode}
             >
                 {t(`${ns}.switch`)}
             </button>

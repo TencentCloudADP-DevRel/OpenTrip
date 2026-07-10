@@ -9,7 +9,14 @@ import type {
 export type AgentMessageRole = "user" | "assistant" | "system";
 
 /** What caused a message to enter the shared trip session. */
-export type AgentMessageSource = "chat" | "mention" | "operation" | "threshold";
+export type AgentMessageSource =
+  | "chat"
+  | "mention"
+  | "operation"
+  | "threshold"
+  /** Stop-comment @agent thread: mirrored user ask + ambient reply. Shown in
+   * StopDetail, not the agent drawer. */
+  | "stop_comment";
 
 /** Minimal UI-message part shape persisted as JSON. Assistant messages may
  * carry richer AI SDK parts (tool calls, reasoning); text is the common case. */

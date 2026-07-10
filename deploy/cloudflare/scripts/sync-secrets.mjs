@@ -38,6 +38,7 @@ const SECRET_KEYS = [
   "OPENWEATHERMAP_API_KEY",
   "GOOGLE_MAPS_API_KEY",
   "CAPTCHA_SECRET_KEY",
+  "RESEND_API_KEY",
 ];
 
 function parseArgs(argv) {

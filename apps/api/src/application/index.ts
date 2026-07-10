@@ -25,6 +25,13 @@ export {
   type GeoReviewLookupDto,
 } from "./geo/geo-data";
 export { GeoError } from "./geo/geo-error";
+export { LodgingService } from "./lodging/lodging-service";
+export {
+  type LodgingSearchResultDto,
+  type LodgingListingDetailDto,
+  type LodgingListingSummaryDto,
+} from "./lodging/lodging-data";
+export { LodgingError } from "./lodging/lodging-error";
 export {
   AgentService,
   ConflictError,

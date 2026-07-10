@@ -40,8 +40,9 @@ only through aggregate methods.
 
 - **toggleVote(stopId, memberId)** — add the member to the stop's votes if
   absent, else remove. Idempotent per member.
-- **addComment(stopId, memberId, text)** — trimmed non-empty text is appended
-  as a `Comment`; empty text is rejected.
+- **addComment(stopId, memberId, text)** — trimmed non-empty text is prepended
+  (newest first) as a `Comment`; empty text is rejected. Agent replies use the
+  same path with author `agent`.
 - **insertStop(day, index, draft)** — inserts a stop at a position within a
   day. Coordinates interpolate from neighbors, or fall back to the day center
   (or use `draft.lat/lng` when provided). Optional `duration`, `category`,
@@ -169,6 +170,18 @@ See [weather.md](./weather.md).
   Application `GeoService` is the only entry used by agent geo read tools.
 
 See [geo.md](./geo.md).
+
+## Lodging
+
+`domain/lodging` is a driven port, not a trip aggregate:
+
+- **LodgingSearchQuery / LodgingListing\*** — vendor-neutral search and listing
+  shapes (Airbnb is the first adapter).
+- **LodgingProvider** — `search`, `listingDetails`; implemented by
+  `AirbnbLodgingProvider`. Application `LodgingService` is the only entry used
+  by agent lodging read tools.
+
+See [lodging.md](./lodging.md).
 
 ## Determinism
 

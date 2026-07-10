@@ -63,5 +63,6 @@ wrapper only.
 - [weather.md](weather.md) — internal weather service, cache, and agent tool boundary.
 - [fx.md](fx.md) — internal FX rates service for settle-up display conversion.
 - [geo.md](geo.md) — internal geo service (OSM/Google), cache, and agent read tools.
+- [lodging.md](lodging.md) — Airbnb lodging search (openbnb-style), agent read tools.
 - [database.md](database.md) — schema, migrations, seed.
 - [auth.md](auth.md) — Better Auth integration.

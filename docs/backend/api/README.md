@@ -33,6 +33,6 @@ DTOs, invite service types, weather/FX data types).
 - [domain.md](../domain.md) — aggregate rules
 - [trip-ops.md](../trip-ops.md) — mutation registry shared with agent tools
 - [agent.md](../agent.md) — session, tools, proactive suggestions
-- [weather.md](../weather.md) · [fx.md](../fx.md) · [geo.md](../geo.md)
+- [weather.md](../weather.md) · [fx.md](../fx.md) · [geo.md](../geo.md) · [lodging.md](../lodging.md)
 - [database.md](../database.md) — persistence
 - Web API wrappers (usage hints only): `apps/web/src/shared/api/`

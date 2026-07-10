@@ -27,7 +27,11 @@ Implemented in `apps/web/src/shared/ui`, matching cossUI APIs:
 `button`, `badge`, `input`, `textarea`, `checkbox`, `tabs`, `card` (+ parts),
 `avatar`, `spinner`, `autocomplete`, `select`, `context-menu`, `tooltip`,
 `popover`, `preview-card`, `dialog`, `collapsible`, `splitter`,
-`scroll-edge-fade`, `markdown-editor`. Each exposes a public `index.ts`.
+`scroll-edge-fade`, `markdown-editor`, `otp-field`. Each exposes a public
+`index.ts`.
+
+`otp-field` is the segmented one-time-code input (Base UI OTP Field) used by
+email registration verification in `AuthForm`.
 
 `preview-card` is a hover/focus-triggered rich card (Base UI PreviewCard). Use
 it, rather than `tooltip`, when the hover content is structured (e.g. the

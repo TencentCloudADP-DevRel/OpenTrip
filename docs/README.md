@@ -39,6 +39,7 @@ Start here for multi-client development:
 - [backend/weather.md](backend/weather.md) — weather proxy, cache, agent tool
 - [backend/fx.md](backend/fx.md) — FX rates proxy for settle-up conversion
 - [backend/geo.md](backend/geo.md) — geo places/routes (OSM/Google), agent tools
+- [backend/lodging.md](backend/lodging.md) — Airbnb lodging search, agent tools
 
 ### Operations and quality
 

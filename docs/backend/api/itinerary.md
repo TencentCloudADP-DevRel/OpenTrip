@@ -102,8 +102,8 @@ legacy fallback only.
 - **Side effect:** when the agent is enabled, comments that `@mention` trip
   members and/or `@agent` are mirrored into the shared agent session (with the
   stop as context). Member mentions use the same toast path as agent chat;
-  ambient agent reply runs only when `@agent` is present (see
-  [agent.md](../agent.md)).
+  ambient agent reply runs only when `@agent` is present and is prepended into
+  the same stop comment thread via `addComment` (see [agent.md](../agent.md)).
 
 ### `POST /api/trips/:id/media`
 

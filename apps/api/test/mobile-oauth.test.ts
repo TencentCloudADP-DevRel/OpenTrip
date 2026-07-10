@@ -21,6 +21,11 @@ function baseConfig(googleOAuth: AppConfig["googleOAuth"]): AppConfig {
     },
     googleOAuth,
     captcha: null,
+    email: {
+      provider: "console",
+      from: "OpenTrip <noreply@localhost>",
+      resendApiKey: undefined,
+    },
     openWeatherMapApiKey: undefined,
     geo: {
       provider: "osm",
@@ -33,6 +38,12 @@ function baseConfig(googleOAuth: AppConfig["googleOAuth"]): AppConfig {
       googleMapsApiKey: undefined,
       timeoutMs: 5_000,
       cacheTtlMs: 60_000,
+    },
+    lodging: {
+      ignoreRobotsTxt: false,
+      disableGeocoding: false,
+      timeoutMs: 30_000,
+      geocodeUserAgent: "OpenTrip-test",
     },
     ai: null,
   };
@@ -77,6 +88,7 @@ function createTestApp(options: {
     weatherService: {} as Container["weatherService"],
     fxService: {} as Container["fxService"],
     geoService: {} as Container["geoService"],
+    lodgingService: {} as Container["lodgingService"],
     fileStorage: {} as Container["fileStorage"],
     avatarService: {} as Container["avatarService"],
     tripMediaService: {} as Container["tripMediaService"],

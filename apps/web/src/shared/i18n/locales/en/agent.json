@@ -24,6 +24,10 @@
     "toastTitle": "{{name}} mentioned you",
     "view": "View"
   },
+  "quote": {
+    "reply": "Reply",
+    "dismiss": "Dismiss quote"
+  },
   "reasoning": {
     "thinking": "Thinking…",
     "thought": "Thought for a moment",

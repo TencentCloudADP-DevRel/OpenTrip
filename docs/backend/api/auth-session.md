@@ -28,8 +28,10 @@ Not every Better Auth plugin path is listed here. Clients need at least:
 
 | Action | Typical path (under `/api/auth`) | Notes |
 | --- | --- | --- |
-| Email sign-up | `POST …/sign-up/email` | May require captcha header when enabled |
-| Email sign-in | `POST …/sign-in/email` | Same |
+| Email sign-up | `POST …/sign-up/email` | Creates unverified user; OTP emailed. Captcha when enabled |
+| Verify email OTP | `POST …/email-otp/verify-email` | Marks verified + auto sign-in |
+| Resend email OTP | `POST …/email-otp/send-verification-otp` | Captcha when enabled |
+| Email sign-in | `POST …/sign-in/email` | Unverified → `EMAIL_NOT_VERIFIED` + OTP resent |
 | Social sign-in | `POST …/sign-in/social` | Google when configured |
 | Session | `GET …/get-session` | Current user + session |
 | Sign-out | `POST …/sign-out` | Clears session |

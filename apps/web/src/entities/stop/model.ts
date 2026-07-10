@@ -1,4 +1,5 @@
 export interface StopComment {
+  /** Trip member id, or `"agent"` for assistant replies in this thread. */
   author: string;
   timeLabel: string;
   text: string;

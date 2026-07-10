@@ -532,6 +532,7 @@ export function createApp(container: Container) {
           dto.id,
           user.id,
           `(commenting on stop "${stopName}") ${text}`,
+          stopId,
           defer,
         ),
       );

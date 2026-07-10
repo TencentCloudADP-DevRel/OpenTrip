@@ -1,14 +1,15 @@
 import { DomainError } from "../shared/errors";
 import { computeBudget } from "./settlement";
-import type {
-  Budget,
-  DaySnapshot,
-  ExpenseSnapshot,
-  MemberRole,
-  MemberSnapshot,
-  StopCategory,
-  StopSnapshot,
-  TripSnapshot,
+import {
+  AGENT_COMMENT_AUTHOR,
+  type Budget,
+  type DaySnapshot,
+  type ExpenseSnapshot,
+  type MemberRole,
+  type MemberSnapshot,
+  type StopCategory,
+  type StopSnapshot,
+  type TripSnapshot,
 } from "./types";
 
 /** Effective permissions a user has against a trip. */
@@ -379,15 +380,20 @@ export class Trip {
       : [...stop.votes, memberId];
   }
 
-  /** Append a non-empty comment authored by the member. */
+  /**
+   * Prepend a non-empty comment (newest first). `memberId` is a trip member
+   * id, or {@link AGENT_COMMENT_AUTHOR} for agent replies in the same thread.
+   */
   addComment(stopId: string, memberId: string, text: string): void {
-    this.requireMember(memberId);
+    if (memberId !== AGENT_COMMENT_AUTHOR) {
+      this.requireMember(memberId);
+    }
     const trimmed = text.trim();
     if (!trimmed) throw new DomainError("empty_comment", "Comment text is required");
     const stop = this.requireStop(stopId);
     stop.comments = [
-      ...stop.comments,
       { author: memberId, timeLabel: "Just now", text: trimmed },
+      ...stop.comments,
     ];
   }
 

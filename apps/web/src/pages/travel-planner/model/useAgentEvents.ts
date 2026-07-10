@@ -34,6 +34,11 @@ export function useAgentEvents(
         void queryClient.invalidateQueries({
           queryKey: queryKeys.agentMessages(tripId),
         });
+        // Stop-comment @agent replies are written into stop_comments; refresh
+        // the trip so StopDetail picks them up without a full page reload.
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.trip(tripId),
+        });
       }
     }
   }, [data, queryClient, tripId]);

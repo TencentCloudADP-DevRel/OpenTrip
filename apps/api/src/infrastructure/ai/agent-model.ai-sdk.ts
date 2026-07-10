@@ -30,6 +30,7 @@ import type {
 import type { TripSnapshot } from "../../domain/trip";
 import type { WeatherService } from "../../application/weather/weather-service";
 import type { GeoService } from "../../application/geo/geo-service";
+import type { LodgingService } from "../../application/lodging/lodging-service";
 import type { FileStorage } from "../../application/storage";
 import {
   isTripMediaStoragePath,
@@ -59,9 +60,10 @@ Rules:
 - You have the same trip-edit capabilities as a human editor. Prefer calling write tools over telling the member to do it manually.
 - Write tools (${tools}) pause for member approval before they run — never claim a change already applied.
 - For existing entities, only use stop/day/expense/member ids from the trip snapshot. insertStop and addExpense create new ids after approval.
-- checkWeather, placeSearch, placeNearby, placeDetail, routeCompute, routeMatrix, reviewLookup, and readTripMedia are read-only and do not need approval.
+- checkWeather, placeSearch, placeNearby, placeDetail, routeCompute, routeMatrix, reviewLookup, airbnbSearch, airbnbListingDetails, and readTripMedia are read-only and do not need approval.
 - Members may attach images, PDFs, or text files in chat. Stop notes in the snapshot may embed trip upload URLs — call readTripMedia with those URLs when you need to see the file contents.
-- Use geo read tools to discover places and travel times, then propose insertStop (or other write tools) when the member wants a found place added to the trip.`;
+- Use geo read tools to discover places and travel times, then propose insertStop (or other write tools) when the member wants a found place added to the trip.
+- Use airbnbSearch / airbnbListingDetails for vacation-rental options (prices, amenities, listing URLs). To put a stay on the itinerary, still call insertStop after the member approves.`;
 }
 
 const EVALUATION_SYSTEM_PROMPT = `You are the OpenTrip trip agent reviewing a single write operation on a collaborative trip. You must stay silent unless the change creates a material planning risk.
@@ -358,6 +360,7 @@ export class AiSdkAgentModel implements AgentModel {
     private config: AiConfig,
     private weatherService: WeatherService,
     private geoService: GeoService,
+    private lodgingService: LodgingService,
     private fileStorage: FileStorage,
   ) {
     if (config.baseUrl) {
@@ -379,6 +382,7 @@ export class AiSdkAgentModel implements AgentModel {
     return {
       ...buildWeatherReadTools(this.weatherService),
       ...buildGeoReadTools(this.geoService),
+      ...buildLodgingReadTools(this.lodgingService),
       ...buildTripMediaReadTools(this.fileStorage, tripId),
     };
   }
@@ -643,6 +647,76 @@ export function buildGeoReadTools(geoService: GeoService): ToolSet {
         lang: z.string().optional(),
       }),
       execute: async (input) => geoService.reviewLookup(input),
+    }),
+  };
+}
+
+const lodgingPropertyTypeSchema = z.enum([
+  "entire_home",
+  "private_room",
+  "shared_room",
+  "hotel_room",
+]);
+
+const lodgingGuestsSchema = {
+  adults: z.number().int().min(0).max(50).optional(),
+  children: z.number().int().min(0).max(50).optional(),
+  infants: z.number().int().min(0).max(50).optional(),
+  pets: z.number().int().min(0).max(50).optional(),
+};
+
+/** Read-only Airbnb lodging tools (openbnb-style scrape, in-process). */
+export function buildLodgingReadTools(
+  lodgingService: LodgingService,
+): ToolSet {
+  return {
+    airbnbSearch: tool({
+      description:
+        "Search Airbnb vacation rentals by location with optional dates, guests, price range, and property type. Returns listing ids, URLs, ratings, and price summaries. Provide listing URLs to the member.",
+      inputSchema: z.object({
+        location: z
+          .string()
+          .min(2)
+          .describe('Location to search (e.g. "Paris, France")'),
+        placeId: z
+          .string()
+          .optional()
+          .describe("Google Maps Place ID; skips client-side geocoding"),
+        checkin: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+        checkout: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+        ...lodgingGuestsSchema,
+        minPrice: z.number().min(0).optional(),
+        maxPrice: z.number().min(0).optional(),
+        cursor: z
+          .string()
+          .optional()
+          .describe("Pagination cursor from a prior search"),
+        propertyType: lodgingPropertyTypeSchema.optional(),
+      }),
+      execute: async (input) => lodgingService.search(input),
+    }),
+    airbnbListingDetails: tool({
+      description:
+        "Get amenities, house rules, description, and location for an Airbnb listing id from airbnbSearch.",
+      inputSchema: z.object({
+        id: z.string().min(1).describe("Airbnb listing id"),
+        checkin: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+        checkout: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+        ...lodgingGuestsSchema,
+      }),
+      execute: async (input) => lodgingService.listingDetails(input),
     }),
   };
 }

@@ -1,13 +1,15 @@
 import { betterAuth } from "better-auth";
-import { bearer, captcha, oneTimeToken } from "better-auth/plugins";
+import { bearer, captcha, emailOTP, oneTimeToken } from "better-auth/plugins";
 import { provisionSampleTripForUser } from "../../application/user/provision-sample-trip";
 import {
   generateUserAvatar,
   resolveInitialAvatar,
 } from "../../application/user/user-initializer";
 import type { Trip, TripRepository } from "../../domain/trip";
-import { mapGoogleProfileToDto } from "./oauth-profile-mapper";
+import { createEmailSender } from "../email/create-email-sender";
+import { buildOtpEmail } from "../email/otp-email";
 import type { AppConfig } from "../config";
+import { mapGoogleProfileToDto } from "./oauth-profile-mapper";
 
 export interface CreateAuthOptions {
   /** When set, each new user receives a personal copy of the sample trip. */
@@ -15,8 +17,24 @@ export interface CreateAuthOptions {
   loadSampleTripTemplate?: () => Promise<Trip>;
 }
 
-/** Build Better Auth over the shared pg pool. Email + password plus optional
- * Google OAuth.
+/** OTP lifetime in seconds (Better Auth emailOTP default is 300). */
+const OTP_EXPIRES_IN_SECONDS = 300;
+
+/** Captcha-protected auth POSTs. Includes email OTP send so resend is gated. */
+const CAPTCHA_ENDPOINTS = [
+  "/sign-up/email",
+  "/sign-in/email",
+  "/request-password-reset",
+  "/email-otp/send-verification-otp",
+] as const;
+
+/** Build Better Auth over the shared pg pool. Email + password (OTP-verified
+ * sign-up) plus optional Google OAuth.
+ *
+ * Email registration requires OTP verification before a session is issued
+ * (`requireEmailVerification` + `emailOTP` with
+ * `overrideDefaultEmailVerification`). The outbound mail adapter is selected
+ * via `EMAIL_PROVIDER` (`console` | `resend`).
  *
  * `defaultCurrency` is a user preference surfaced on every session; the planner
  * uses it as the default currency when composing a stop cost.
@@ -36,6 +54,8 @@ export function createAuth(
   options: CreateAuthOptions = {},
 ) {
     const { tripRepository, loadSampleTripTemplate } = options;
+    const emailSender = createEmailSender(config.email);
+
     return betterAuth({
         // Better Auth auto-detects pg vs mysql2 pools via Kysely dialects.
         database: database as never,
@@ -43,7 +63,18 @@ export function createAuth(
         baseURL: config.betterAuthUrl,
         basePath: "/api/auth",
         trustedOrigins: config.trustedOrigins,
-        emailAndPassword: { enabled: true },
+        emailAndPassword: {
+            enabled: true,
+            requireEmailVerification: true,
+        },
+        emailVerification: {
+            // With emailOTP.overrideDefaultEmailVerification, this sends an OTP
+            // instead of a magic link. sendOnSignIn covers unverified password
+            // sign-in attempts so the client can show the OTP step.
+            sendOnSignUp: true,
+            sendOnSignIn: true,
+            autoSignInAfterVerification: true,
+        },
         socialProviders: config.googleOAuth
             ? {
                   google: {
@@ -101,11 +132,36 @@ export function createAuth(
                 disableClientRequest: true,
                 storeToken: "hashed",
             }),
+            emailOTP({
+                otpLength: 6,
+                expiresIn: OTP_EXPIRES_IN_SECONDS,
+                storeOTP: "hashed",
+                overrideDefaultEmailVerification: true,
+                async sendVerificationOTP({ email, otp, type }) {
+                    const message = buildOtpEmail({
+                        to: email,
+                        otp,
+                        type,
+                        expiresInSeconds: OTP_EXPIRES_IN_SECONDS,
+                    });
+                    // Await so Workers waitUntil / Node keep the request alive
+                    // until the provider accepts the message. Better Auth already
+                    // runs this via runInBackgroundOrAwait when overriding
+                    // default verification.
+                    try {
+                        await emailSender.send(message);
+                    } catch (err) {
+                        console.error("Failed to send OTP email:", err);
+                        throw err;
+                    }
+                },
+            }),
             ...(config.captcha
                 ? [
                       captcha({
                           provider: config.captcha.provider,
                           secretKey: config.captcha.secretKey,
+                          endpoints: [...CAPTCHA_ENDPOINTS],
                       }),
                   ]
                 : []),

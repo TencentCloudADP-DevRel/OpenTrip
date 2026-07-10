@@ -173,6 +173,11 @@ Routes instead, set `GEO_PROVIDER=google` as a var and
 (`GEO_OSM_NOMINATIM_URL`, `GEO_OSM_OVERPASS_URL`, `GEO_OSM_OSRM_URL`,
 `GEO_OSM_USER_AGENT`) are vars. See [../backend/geo.md](../backend/geo.md).
 
+Airbnb lodging tools (`airbnbSearch`, `airbnbListingDetails`) need no API key.
+Optional vars: `LODGING_IGNORE_ROBOTS_TXT`, `LODGING_DISABLE_GEOCODING`,
+`LODGING_TIMEOUT_MS`, `LODGING_GEOCODE_USER_AGENT`. See
+[../backend/lodging.md](../backend/lodging.md).
+
 ## Troubleshooting
 
 ### Browser shows “blocked by CORS” on `api.opentrip.im`

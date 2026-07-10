@@ -8,6 +8,7 @@ import type {
   PendingPatch,
 } from "../../domain/agent";
 import type { Trip, TripRepository } from "../../domain/trip";
+import { AGENT_COMMENT_AUTHOR } from "../../domain/trip";
 import { ForbiddenError } from "../use-cases";
 import { toTripDto, type TripDto } from "../dto";
 import { applyTripOp } from "../trip/ops";
@@ -55,6 +56,18 @@ const SUGGESTION_UPDATE_WINDOW_MS = 10 * 60 * 1000;
 
 function newId(prefix: string): string {
   return `${prefix}${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** Flatten text parts from an ambient reply for stop-comment persistence. */
+function textFromAgentParts(parts: AgentMessage["parts"]): string {
+  return parts
+    .filter(
+      (p): p is { type: "text"; text: string } =>
+        p.type === "text" && typeof (p as { text?: unknown }).text === "string",
+    )
+    .map((p) => p.text)
+    .join("\n")
+    .trim();
 }
 
 /** Use cases for the shared per-trip agent session: chat, operation-triggered
@@ -294,12 +307,14 @@ export class AgentService {
   /**
    * Mirror a stop comment into the shared agent session when it @mentions
    * members and/or @agent. Member mentions drive the same toast path as chat;
-   * ambient reply runs only for explicit @agent.
+   * ambient reply runs only for explicit @agent and is written back into the
+   * stop comment thread (not the agent drawer).
    */
   async recordStopComment(
     tripId: string,
     userId: string,
     text: string,
+    stopId: string,
     defer: Defer,
   ): Promise<void> {
     const trip = await this.load(tripId);
@@ -312,10 +327,10 @@ export class AgentService {
       role: "user",
       parts,
       actorUserId: userId,
-      source: "mention",
+      source: "stop_comment",
     });
     if (wantsAgent) {
-      defer(this.generateAmbientReply(tripId));
+      defer(this.generateAmbientReply(tripId, { stopId }));
     }
   }
 
@@ -326,7 +341,7 @@ export class AgentService {
     text: string,
     defer: Defer,
   ): Promise<void> {
-    return this.recordStopComment(tripId, userId, text, defer);
+    return this.recordStopComment(tripId, userId, text, "", defer);
   }
 
   /**
@@ -465,7 +480,10 @@ export class AgentService {
     }
   }
 
-  private async generateAmbientReply(tripId: string): Promise<void> {
+  private async generateAmbientReply(
+    tripId: string,
+    options?: { stopId?: string },
+  ): Promise<void> {
     try {
       const trip = await this.load(tripId);
       const history = await this.sessionRepo.listMessages(tripId, {
@@ -475,12 +493,23 @@ export class AgentService {
         trip: trip.toSnapshot(),
         history,
       });
+      const stopId = options?.stopId?.trim();
       await this.appendMessage(trip, {
         role: "assistant",
         parts,
         actorUserId: null,
-        source: "threshold",
+        source: stopId ? "stop_comment" : "threshold",
       });
+      if (stopId) {
+        const text = textFromAgentParts(parts);
+        if (text) {
+          // Reload so we do not overwrite concurrent trip edits with a stale
+          // aggregate while the model was generating.
+          const fresh = await this.load(tripId);
+          fresh.addComment(stopId, AGENT_COMMENT_AUTHOR, text);
+          await this.tripRepo.save(fresh);
+        }
+      }
     } catch (err) {
       console.error("Agent ambient reply failed:", err);
     }

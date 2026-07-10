@@ -24,6 +24,10 @@
     "toastTitle": "{{name}} 提到了你",
     "view": "查看"
   },
+  "quote": {
+    "reply": "回复",
+    "dismiss": "取消引用"
+  },
   "reasoning": {
     "thinking": "思考中…",
     "thought": "已思考片刻",

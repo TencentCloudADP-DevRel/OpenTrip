@@ -1,10 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { UIMessage } from "ai";
 import type { Trip } from "@/entities/trip";
 import type { AgentSuggestion } from "@/shared/api";
 import { Spinner } from "@/shared/ui/spinner";
 import { useAgentChat } from "../../model/useAgentChat";
+import { type QuoteTarget } from "../quote";
 import { AgentComposer } from "./AgentComposer";
 import {
   AgentMessageItem,
@@ -41,6 +42,7 @@ export function AgentChat({
     addToolApprovalResponse,
   } = useAgentChat(tripId, enabled);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [quote, setQuote] = useState<QuoteTarget | null>(null);
 
   const persisted: AgentDisplayMessage[] = (history?.messages ?? []).map((m) => ({
     id: m.id,
@@ -75,7 +77,10 @@ export function AgentChat({
       streaming: streaming && m.role === "assistant",
     }));
 
-  const messages = [...persisted, ...live];
+  // Stop-comment @agent threads live in StopDetail; keep them out of the drawer.
+  const messages = [...persisted, ...live].filter(
+    (m) => m.source !== "stop_comment",
+  );
   const suggestionsByMessage = new Map(
     (history?.suggestions ?? [])
       .filter((s) => s.messageId)
@@ -130,6 +135,7 @@ export function AgentChat({
               onToolDeny={(id) =>
                 void addToolApprovalResponse({ id, approved: false })
               }
+              onReply={(target) => setQuote(target)}
             />
           ))
         )}
@@ -141,7 +147,12 @@ export function AgentChat({
         ) : null}
       </div>
 
-      <AgentComposer trip={trip} onSend={send} />
+      <AgentComposer
+        trip={trip}
+        onSend={send}
+        quote={quote}
+        onClearQuote={() => setQuote(null)}
+      />
     </div>
   );
 }

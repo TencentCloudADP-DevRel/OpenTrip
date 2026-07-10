@@ -31,6 +31,19 @@ import {
 } from "@/shared/ui/select";
 import { Spinner } from "@/shared/ui/spinner";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/shared/ui/tooltip";
+import { MentionListbox, useMentionInput, AGENT_TOKEN } from "./mention";
+import {
+  composeWithQuote,
+  parseLeadingQuote,
+  QuoteBlock,
+  QuotePreview,
+  ReplyHoverButton,
+  type QuoteTarget,
+} from "./quote";
+import { AgentAvatar } from "./agent/AgentAvatar";
+
+/** Sentinel author id for agent replies in stop comment threads (matches API). */
+const AGENT_COMMENT_AUTHOR = AGENT_TOKEN;
 
 const CATEGORY_OPTIONS: StopCategory[] = [
   "Sight",
@@ -587,11 +600,21 @@ export function StopDetail({
   onExpandNote: () => void;
 }) {
   const { t } = useTranslation("planner");
+  const { t: ta } = useTranslation("agent");
   const [draft, setDraft] = useState("");
   const [pendingText, setPendingText] = useState<string | null>(null);
+  const [quote, setQuote] = useState<QuoteTarget | null>(null);
   const [staggerComments, setStaggerComments] = useState(false);
   const [enteringKeys, setEnteringKeys] = useState<Set<string>>(() => new Set());
   const prevCommentsRef = useRef(stop.comments);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const mention = useMentionInput({
+    trip,
+    value: draft,
+    setValue: setDraft,
+    inputRef,
+    listId: "stop-comment-mention-list",
+  });
   const voted = stop.votes.includes(currentUserId);
   const addedBy = memberOf(trip, stop.createdBy);
   const currentUser = memberOf(trip, currentUserId);
@@ -637,12 +660,32 @@ export function StopDetail({
     if (!commentPending && pendingText) setPendingText(null);
   }, [commentPending, pendingText]);
 
+  useEffect(() => {
+    if (!quote) return;
+    inputRef.current?.focus();
+  }, [quote]);
+
   const submit = () => {
-    const text = draft.trim();
+    const text = composeWithQuote(quote, draft);
     if (!text || commentPending) return;
     setPendingText(text);
     onComment(stop.id, text);
     setDraft("");
+    setQuote(null);
+    mention.dismiss();
+  };
+
+  const replyToComment = (
+    authorLabel: string,
+    text: string,
+    mentionToken?: string,
+  ) => {
+    const { body } = parseLeadingQuote(text);
+    setQuote({
+      author: authorLabel,
+      text: (body.trim() || text).trim(),
+      mentionToken,
+    });
   };
 
   return (
@@ -815,39 +858,6 @@ export function StopDetail({
               ? t("detail.commentsWithCount", { count: stop.comments.length })
               : t("detail.commentsEmpty")}
           </h3>
-          {stop.comments.map((c) => {
-            const key = commentKey(c);
-            const m = memberOf(trip, c.author);
-            return (
-              <div
-                key={key}
-                className={cn(
-                  "flex gap-2.5",
-                  (staggerComments || enteringKeys.has(key)) && "wf-enter",
-                )}
-              >
-                <Avatar
-                  name={m.name}
-                  bg={m.avatarBg}
-                  fg={m.avatarFg}
-                  src={m.image}
-                  seed={m.id}
-                  size={26}
-                />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-sm font-medium">{m.shortName}</span>
-                    <span className="font-mono text-[10.5px] text-muted-foreground">
-                      {c.timeLabel}
-                    </span>
-                  </div>
-                  <p className="text-sm leading-normal text-foreground text-pretty">
-                    {c.text}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
           {pendingText ? (
             <div className="flex gap-2.5 wf-enter opacity-60">
               <Avatar
@@ -865,42 +875,152 @@ export function StopDetail({
                   </span>
                   <Spinner className="size-3 text-muted-foreground" />
                 </div>
-                <p className="text-sm leading-normal text-foreground text-pretty">
-                  {pendingText}
-                </p>
+                {(() => {
+                  const { quote: embeddedQuote, body } =
+                    parseLeadingQuote(pendingText);
+                  return (
+                    <>
+                      {embeddedQuote ? (
+                        <QuoteBlock quote={embeddedQuote} />
+                      ) : null}
+                      {body ? (
+                        <p className="text-sm leading-normal text-foreground text-pretty">
+                          {body}
+                        </p>
+                      ) : null}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           ) : null}
+          {stop.comments.map((c) => {
+            const key = commentKey(c);
+            const isAgent = c.author === AGENT_COMMENT_AUTHOR;
+            const m = isAgent ? null : memberOf(trip, c.author);
+            const authorLabel = isAgent
+              ? ta("panel.agentName")
+              : m!.shortName;
+            const { quote: embeddedQuote, body } = parseLeadingQuote(c.text);
+            return (
+              <div
+                key={key}
+                className={cn(
+                  "group flex gap-2.5",
+                  (staggerComments || enteringKeys.has(key)) && "wf-enter",
+                )}
+              >
+                {isAgent ? (
+                  <AgentAvatar className="size-[26px]" />
+                ) : (
+                  <Avatar
+                    name={m!.name}
+                    bg={m!.avatarBg}
+                    fg={m!.avatarFg}
+                    src={m!.image}
+                    seed={m!.id}
+                    size={26}
+                  />
+                )}
+                <div className="relative flex min-w-0 flex-1 flex-col gap-0.5 pr-8">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-medium">{authorLabel}</span>
+                    <span className="font-mono text-[10.5px] text-muted-foreground">
+                      {c.timeLabel}
+                    </span>
+                  </div>
+                  {embeddedQuote ? <QuoteBlock quote={embeddedQuote} /> : null}
+                  {body ? (
+                    isAgent ? (
+                      <NoteMarkdown value={body} />
+                    ) : (
+                      <p className="text-sm leading-normal text-foreground text-pretty">
+                        {body}
+                      </p>
+                    )
+                  ) : null}
+                  <ReplyHoverButton
+                    label={t("detail.replyComment")}
+                    onClick={() =>
+                      replyToComment(
+                        isAgent ? ta("panel.agentName") : m!.name,
+                        c.text,
+                        isAgent
+                          ? AGENT_TOKEN
+                          : m!.isCurrentUser
+                            ? undefined
+                            : m!.name,
+                      )
+                    }
+                    className="absolute right-0 top-0"
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <div className="flex flex-none gap-2 p-3 shadow-[0_-4px_8px_-4px_color-mix(in_srgb,var(--foreground)_5%,transparent)]">
-        <Input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") submit();
-          }}
-          placeholder={t("detail.commentPlaceholder")}
-          disabled={commentPending}
-          className="h-8 text-sm"
-        />
-        <Button
-          variant="primary"
-          size="sm"
-          static={commentPending}
-          disabled={commentPending || !draft.trim()}
-          className="min-w-[3.25rem]"
-          onClick={submit}
-        >
-          <span
-            className="wf-icon-swap"
-            data-state={commentPending ? "active" : undefined}
+      <div className="relative flex flex-none flex-col gap-1.5 p-3 shadow-[0_-4px_8px_-4px_color-mix(in_srgb,var(--foreground)_5%,transparent)]">
+        {mention.open ? (
+          <MentionListbox
+            listId={mention.listId}
+            listRef={mention.listRef}
+            items={mention.items}
+            activeIndex={mention.activeIndex}
+            onSelect={mention.insertMention}
+            onHover={mention.setActiveIndex}
+            optionId={mention.optionId}
+          />
+        ) : null}
+        {quote ? (
+          <QuotePreview
+            quote={quote}
+            dismissLabel={t("detail.dismissQuote")}
+            onDismiss={() => setQuote(null)}
+          />
+        ) : null}
+        <div className="flex gap-2">
+          <Input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => {
+              const value = e.target.value;
+              setDraft(value);
+              const inputType = (e.nativeEvent as InputEvent).inputType ?? "";
+              const pasted =
+                inputType === "insertFromPaste" ||
+                inputType === "insertFromDrop";
+              const caret = e.target.selectionStart ?? value.length;
+              mention.syncFromInput(value, caret, { pasted });
+            }}
+            onKeyDown={(e) => {
+              if (mention.onKeyDown(e)) return;
+              if (e.key === "Enter" && !e.nativeEvent.isComposing) submit();
+            }}
+            onBlur={mention.dismiss}
+            placeholder={t("detail.commentPlaceholder")}
+            disabled={commentPending}
+            className="h-8 text-sm"
+            {...mention.aria}
+          />
+          <Button
+            variant="primary"
+            size="sm"
+            static={commentPending}
+            disabled={commentPending || (!draft.trim() && !quote)}
+            className="min-w-[3.25rem]"
+            onClick={submit}
           >
-            <span>{t("detail.postComment")}</span>
-            <Spinner className="size-3.5" />
-          </span>
-        </Button>
+            <span
+              className="wf-icon-swap"
+              data-state={commentPending ? "active" : undefined}
+            >
+              <span>{t("detail.postComment")}</span>
+              <Spinner className="size-3.5" />
+            </span>
+          </Button>
+        </div>
       </div>
     </div>
   );

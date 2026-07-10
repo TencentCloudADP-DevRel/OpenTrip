@@ -5,6 +5,7 @@ import {
   WeatherService,
   FxService,
   GeoService,
+  LodgingService,
   AgentService,
   TripMediaService,
 } from "../../application";
@@ -22,6 +23,7 @@ import { OpenWeatherMapClient } from "../weather/openweather-client";
 import { CachedFxClient } from "../fx/cached-fx-client";
 import { FrankfurterClient } from "../fx/frankfurter-client";
 import { createGeoProvider } from "../geo/create-geo-provider";
+import { AirbnbLodgingProvider } from "../lodging/airbnb-provider";
 import { AiSdkAgentModel } from "../ai/agent-model.ai-sdk";
 import type { AppConfig } from "../config";
 
@@ -40,6 +42,7 @@ export interface Container {
   weatherService: WeatherService;
   fxService: FxService;
   geoService: GeoService;
+  lodgingService: LodgingService;
   fileStorage: FileStorage;
   avatarService: AvatarService;
   tripMediaService: TripMediaService;
@@ -82,11 +85,20 @@ export function createContainer(
   const cachedFxClient = new CachedFxClient(frankfurterClient);
   const fxService = new FxService(cachedFxClient);
   const geoService = new GeoService(createGeoProvider(config.geo));
+  const lodgingService = new LodgingService(
+    new AirbnbLodgingProvider(config.lodging),
+  );
   const agentService = config.ai
     ? new AgentService(
         tripRepository,
         new SqlAgentSessionRepository(pool),
-        new AiSdkAgentModel(config.ai, weatherService, geoService, fileStorage),
+        new AiSdkAgentModel(
+          config.ai,
+          weatherService,
+          geoService,
+          lodgingService,
+          fileStorage,
+        ),
         {
           proactiveThreshold: config.ai.proactiveThreshold,
         },
@@ -103,6 +115,7 @@ export function createContainer(
     weatherService,
     fxService,
     geoService,
+    lodgingService,
     fileStorage,
     avatarService,
     tripMediaService,

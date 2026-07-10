@@ -7,6 +7,13 @@ import type { AgentMessageSource, AgentSuggestion } from "@/shared/api";
 import { Avatar } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/lib";
+import { AGENT_TOKEN } from "../mention";
+import {
+  parseLeadingQuote,
+  QuoteBlock,
+  ReplyHoverButton,
+  type QuoteTarget,
+} from "../quote";
 import {
   AgentToolApprovalCard,
   AgentToolStatusLine,
@@ -210,6 +217,7 @@ export function AgentMessageItem({
   onDenySuggestion,
   onToolApprove,
   onToolDeny,
+  onReply,
 }: {
   message: AgentDisplayMessage;
   trip: Trip;
@@ -220,6 +228,7 @@ export function AgentMessageItem({
   onDenySuggestion?: (suggestion: AgentSuggestion) => void;
   onToolApprove?: (approvalId: string) => void;
   onToolDeny?: (approvalId: string) => void;
+  onReply?: (target: QuoteTarget) => void;
 }) {
   const { t, i18n } = useTranslation("agent");
 
@@ -240,11 +249,13 @@ export function AgentMessageItem({
     message.parts?.length ? textFromParts(message.parts) : message.text;
   const fileAttachments = filePartsFromMessage(message.parts);
   const reasoning = isAgent ? reasoningFromParts(message.parts) : null;
-  const { stopName, body } = parseStopContext(displayText);
+  const { stopName, body: stopBody } = parseStopContext(displayText);
+  const { quote, body } = parseLeadingQuote(stopBody);
   const showThinking =
     isAgent &&
     message.streaming === true &&
     !body &&
+    !quote &&
     !fileAttachments.length &&
     !toolParts.length &&
     !(reasoning?.text);
@@ -256,6 +267,26 @@ export function AgentMessageItem({
     : message.actorName
       ? trip.members.find((m) => m.name === message.actorName)
       : trip.members.find((m) => m.isCurrentUser);
+
+  const isOwnMessage = !isAgent && (member?.isCurrentUser ?? !message.actorName);
+  const authorLabel = isAgent
+    ? t("panel.agentName")
+    : (message.actorName ?? t("panel.systemName"));
+  const replyText = (body.trim() || quote?.text || "").trim();
+  const canReply =
+    Boolean(onReply) &&
+    !isOwnMessage &&
+    !message.streaming &&
+    Boolean(replyText);
+
+  const handleReply = () => {
+    if (!onReply || !replyText) return;
+    onReply({
+      author: authorLabel,
+      text: replyText,
+      mentionToken: isAgent ? AGENT_TOKEN : member?.name,
+    });
+  };
 
   const avatar = isAgent ? (
     <AgentAvatar />
@@ -281,14 +312,12 @@ export function AgentMessageItem({
   return (
     <div className={cn("flex flex-col gap-1", isAgent ? "items-start" : "items-end")}>
       <div className="flex items-center gap-1.5 px-0.5 text-[11px] text-muted-foreground">
-        <span>
-          {isAgent ? t("panel.agentName") : (message.actorName ?? t("panel.systemName"))}
-        </span>
+        <span>{authorLabel}</span>
         <span className="tabular-nums">{timeLabel(message.createdAt, i18n.language)}</span>
       </div>
       <div
         className={cn(
-          "flex w-full items-start gap-2",
+          "group flex w-full items-start gap-1.5",
           isAgent ? "flex-row" : "flex-row-reverse",
         )}
       >
@@ -334,20 +363,36 @@ export function AgentMessageItem({
             />
           ) : null}
 
-          {body ? (
-            <div
-              className={cn(
-                "w-fit max-w-full rounded-xl px-3 py-2 text-sm",
-                isAgent
-                  ? "rounded-tl-sm bg-accent text-foreground"
-                  : "whitespace-pre-wrap rounded-tr-sm bg-corn-100 text-foreground dark:bg-corn-950",
-              )}
-            >
-              {isAgent ? (
-                <AgentMarkdown text={body} streaming={message.streaming} />
-              ) : (
-                body
-              )}
+          {body || quote ? (
+            <div className="relative w-fit max-w-full">
+              <div
+                className={cn(
+                  "w-fit max-w-full rounded-xl px-3 py-2 text-sm",
+                  isAgent
+                    ? "rounded-tl-sm bg-accent text-foreground"
+                    : "rounded-tr-sm bg-corn-100 text-foreground dark:bg-corn-950",
+                )}
+              >
+                {quote ? <QuoteBlock quote={quote} /> : null}
+                {body ? (
+                  isAgent ? (
+                    <AgentMarkdown text={body} streaming={message.streaming} />
+                  ) : (
+                    <span className="whitespace-pre-wrap">{body}</span>
+                  )
+                ) : null}
+              </div>
+              {canReply ? (
+                <ReplyHoverButton
+                  label={t("quote.reply")}
+                  onClick={handleReply}
+                  className={cn(
+                    "absolute top-0",
+                    // Sit outside the bubble, flush with its top edge.
+                    isAgent ? "left-full ml-1" : "right-full mr-1",
+                  )}
+                />
+              ) : null}
             </div>
           ) : null}
 

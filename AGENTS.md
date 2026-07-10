@@ -57,6 +57,7 @@
 - [`docs/backend/weather.md`](docs/backend/weather.md) — weather proxy and cache
 - [`docs/backend/fx.md`](docs/backend/fx.md) — FX rates proxy for settle-up conversion
 - [`docs/backend/geo.md`](docs/backend/geo.md) — geo places/routes and agent tools
+- [`docs/backend/lodging.md`](docs/backend/lodging.md) — Airbnb lodging search and agent tools
 
 ### Operations and quality
 

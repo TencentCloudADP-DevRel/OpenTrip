@@ -40,11 +40,17 @@ widgets and features. Two pages:
   Collapsible modeled on AI SDK UI's `Reasoning` element (auto-opens while the
   model thinks, auto-collapses ~1 s after it finishes, and caps its content in a
   scrollable max-height container); the composer (`ui/agent/AgentComposer.tsx`)
-  offers an inline `@`-mention list of trip members and the agent that opens
-  only when `@` is typed (never on paste/drop), filters as you type, and is
-  navigated with Up/Down + Tab/Enter to insert (Escape dismisses); member
+  and stop-detail comment input (`ui/StopDetail.tsx`) share
+  `ui/mention/` for an inline `@`-mention list of trip members and the agent
+  that opens only when `@` is typed (never on paste/drop), filters as you type,
+  and is navigated with Up/Down + Tab/Enter to insert (Escape dismisses); member
   mentions persist a `mentions` part on the message and polled clients show a
-  toast to each @mentioned user (never the author); `@agent` routes through the
+  toast to each @mentioned user (never the author) — stop comments that
+  `@mention` members are mirrored into the agent session so the same toast path
+  fires; stop comments and agent chat bubbles expose a hover reply control
+  (`ui/quote/`) that quotes the snippet into the composer (markdown `>` block +
+  optional `@` mention) and renders received quotes as an inline chip;
+  `@agent` in chat routes through the
   streaming `useChat` path so reasoning/tool approval stay live;
   `model/useAgentChat.ts` wraps AI SDK UI's
   `useChat` with

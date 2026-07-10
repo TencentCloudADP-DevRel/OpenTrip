@@ -42,7 +42,15 @@ export interface DaySnapshot {
   color: string;
 }
 
+/**
+ * Sentinel `CommentSnapshot.author` for agent replies posted into a stop
+ * comment thread (when a member @mentions the agent there). Not a trip member
+ * id — the UI resolves this to the agent avatar/name.
+ */
+export const AGENT_COMMENT_AUTHOR = "agent";
+
 export interface CommentSnapshot {
+  /** Trip member id, or {@link AGENT_COMMENT_AUTHOR} for agent replies. */
   author: string;
   timeLabel: string;
   text: string;

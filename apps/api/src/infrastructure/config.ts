@@ -14,6 +14,17 @@ export interface CaptchaConfig {
     secretKey: string;
 }
 
+export type EmailProviderName = "console" | "resend";
+
+/** Transactional email (OTP, etc.). Defaults to `console` for local dev. */
+export interface EmailConfig {
+    provider: EmailProviderName;
+    /** From address, e.g. `OpenTrip <noreply@opentrip.im>`. */
+    from: string;
+    /** Required when provider is `resend`. */
+    resendApiKey: string | undefined;
+}
+
 export interface AiConfig {
     provider: string;
     model: string;
@@ -44,6 +55,17 @@ export interface GeoConfig {
     cacheTtlMs: number;
 }
 
+/** Airbnb lodging scrape (openbnb-style in-process tools). */
+export interface LodgingConfig {
+    /** Bypass Airbnb robots.txt checks (testing only). */
+    ignoreRobotsTxt: boolean;
+    /** Skip Photon/Nominatim bbox; let Airbnb resolve the location string. */
+    disableGeocoding: boolean;
+    timeoutMs: number;
+    /** Identifying User-Agent for Photon/Nominatim (not the Airbnb browser UA). */
+    geocodeUserAgent: string;
+}
+
 export type DatabaseProvider = "postgres" | "mysql";
 
 /** MySQL TLS mode for direct connections (Hyperdrive manages TLS separately). */
@@ -66,8 +88,10 @@ export interface AppConfig {
     storage: StorageConfig;
     googleOAuth: GoogleOAuthConfig | null;
     captcha: CaptchaConfig | null;
+    email: EmailConfig;
     openWeatherMapApiKey: string | undefined;
     geo: GeoConfig;
+    lodging: LodgingConfig;
     /** Trip agent model configuration. Null disables the agent entirely. */
     ai: AiConfig | null;
 }
@@ -110,6 +134,12 @@ export interface RawEnv {
     GOOGLE_CLIENT_SECRET?: string;
     CAPTCHA_PROVIDER?: string;
     CAPTCHA_SECRET_KEY?: string;
+    /** Transactional email: `console` (default) | `resend`. */
+    EMAIL_PROVIDER?: string;
+    /** From address for outbound mail. Required for `resend`. */
+    EMAIL_FROM?: string;
+    /** Resend API key. Required when EMAIL_PROVIDER=resend. */
+    RESEND_API_KEY?: string;
     STORAGE_BACKEND?: string;
     STORAGE_ROOT?: string;
     STORAGE_PUBLIC_URL?: string;
@@ -135,6 +165,10 @@ export interface RawEnv {
     AI_API_KEY?: string;
     AI_PROACTIVE_THRESHOLD?: string;
     AI_MAX_TOOL_STEPS?: string;
+    LODGING_IGNORE_ROBOTS_TXT?: string;
+    LODGING_DISABLE_GEOCODING?: string;
+    LODGING_TIMEOUT_MS?: string;
+    LODGING_GEOCODE_USER_AGENT?: string;
 }
 
 const CAPTCHA_PROVIDERS: CaptchaProvider[] = [
@@ -208,10 +242,12 @@ export function loadConfig(env: RawEnv, connectionString?: string): AppConfig {
                 ? { clientId: googleClientId, clientSecret: googleClientSecret }
                 : null,
         captcha: parseCaptchaConfig(env),
+        email: parseEmailConfig(env),
         openWeatherMapApiKey:
           env.OPENWEATHERMAP_API_KEY?.trim() ||
           env.VITE_OPENWEATHERMAP_API_KEY?.trim(),
         geo: parseGeoConfig(env),
+        lodging: parseLodgingConfig(env),
         ai: parseAiConfig(env),
     };
 }
@@ -262,6 +298,59 @@ function parseGeoConfig(env: RawEnv): GeoConfig {
             DEFAULT_GEO_CACHE_TTL_MS,
         ),
     };
+}
+
+const EMAIL_PROVIDERS: EmailProviderName[] = ["console", "resend"];
+const DEFAULT_EMAIL_FROM = "OpenTrip <noreply@localhost>";
+
+/** Email provider selection. Defaults to console logging for local/dev. */
+function parseEmailConfig(env: RawEnv): EmailConfig {
+    const providerRaw = env.EMAIL_PROVIDER?.trim().toLowerCase() || "console";
+    if (!EMAIL_PROVIDERS.includes(providerRaw as EmailProviderName)) {
+        throw new Error(
+            `EMAIL_PROVIDER must be one of ${EMAIL_PROVIDERS.join(", ")}`,
+        );
+    }
+    const provider = providerRaw as EmailProviderName;
+    const from = env.EMAIL_FROM?.trim() || DEFAULT_EMAIL_FROM;
+    const resendApiKey = env.RESEND_API_KEY?.trim() || undefined;
+
+    if (provider === "resend") {
+        if (!env.EMAIL_FROM?.trim()) {
+            throw new Error("EMAIL_FROM is required when EMAIL_PROVIDER=resend");
+        }
+        if (!resendApiKey) {
+            throw new Error(
+                "RESEND_API_KEY is required when EMAIL_PROVIDER=resend",
+            );
+        }
+    }
+
+    return { provider, from, resendApiKey };
+}
+
+const DEFAULT_LODGING_TIMEOUT_MS = 30_000;
+const DEFAULT_LODGING_GEOCODE_UA =
+    "OpenTrip/0.1 (https://github.com/stvlynn/OpenTrip; lodging-geocode)";
+
+/** Airbnb lodging scrape options. Always available; no API key required. */
+function parseLodgingConfig(env: RawEnv): LodgingConfig {
+    return {
+        ignoreRobotsTxt: parseBooleanFlag(env.LODGING_IGNORE_ROBOTS_TXT),
+        disableGeocoding: parseBooleanFlag(env.LODGING_DISABLE_GEOCODING),
+        timeoutMs: parseNumber(
+            env.LODGING_TIMEOUT_MS,
+            "LODGING_TIMEOUT_MS",
+            DEFAULT_LODGING_TIMEOUT_MS,
+        ),
+        geocodeUserAgent:
+            env.LODGING_GEOCODE_USER_AGENT?.trim() || DEFAULT_LODGING_GEOCODE_UA,
+    };
+}
+
+function parseBooleanFlag(value: string | undefined): boolean {
+    const trimmed = value?.trim().toLowerCase();
+    return trimmed === "true" || trimmed === "1" || trimmed === "yes";
 }
 
 /** Agent config. Requires AI_MODEL and AI_API_KEY together; absence of either

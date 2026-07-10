@@ -184,11 +184,26 @@ describe("Trip aggregate", () => {
     expect(() => trip.addComment("s1", "lynn", "   ")).toThrow();
   });
 
-  it("appends a trimmed comment authored by the member", () => {
+  it("prepends a trimmed comment authored by the member (newest first)", () => {
     const trip = freshTrip();
     trip.addComment("s1", "lynn", "  Sounds great  ");
     const comments = trip.toSnapshot().stops.find((s) => s.id === "s1")!.comments;
-    expect(comments.at(-1)).toMatchObject({ author: "lynn", text: "Sounds great" });
+    expect(comments[0]).toMatchObject({ author: "lynn", text: "Sounds great" });
+  });
+
+  it("prepends an agent reply through the same addComment path", () => {
+    const trip = freshTrip();
+    trip.addComment("s1", "lynn", "What do you think?");
+    trip.addComment("s1", "agent", "  Go early for photos  ");
+    const comments = trip.toSnapshot().stops.find((s) => s.id === "s1")!.comments;
+    expect(comments[0]).toMatchObject({
+      author: "agent",
+      text: "Go early for photos",
+    });
+    expect(comments[1]).toMatchObject({
+      author: "lynn",
+      text: "What do you think?",
+    });
   });
 
   it("inserts a stop within a day and keeps ordering contiguous", () => {

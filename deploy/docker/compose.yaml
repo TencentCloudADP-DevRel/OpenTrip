@@ -54,6 +54,9 @@ services:
             TRUSTED_ORIGINS: ${WEB_ORIGIN:-http://localhost:8090}
             GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
             GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+            EMAIL_PROVIDER: ${EMAIL_PROVIDER:-console}
+            EMAIL_FROM: ${EMAIL_FROM:-OpenTrip <noreply@localhost>}
+            RESEND_API_KEY: ${RESEND_API_KEY}
             STORAGE_BACKEND: ${STORAGE_BACKEND:-fs}
             STORAGE_ROOT: ${STORAGE_ROOT:-/app/apps/api/uploads}
             AI_PROVIDER: ${AI_PROVIDER:-openai}

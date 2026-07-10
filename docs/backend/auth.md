@@ -10,7 +10,15 @@ Reference: [../reference/backend-sources.md](../reference/backend-sources.md).
 ```ts
 export const auth = betterAuth({
   database: pool,               // pg.Pool
-  emailAndPassword: { enabled: true },
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: true,
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    sendOnSignIn: true,
+    autoSignInAfterVerification: true,
+  },
   socialProviders: config.googleOAuth
     ? {
         google: {
@@ -35,9 +43,53 @@ export const auth = betterAuth({
       defaultCurrency: { type: "string", required: false, defaultValue: "JPY", input: true },
     },
   },
+  plugins: [
+    bearer(),
+    oneTimeToken({ /* mobile OAuth bridge */ }),
+    emailOTP({
+      overrideDefaultEmailVerification: true,
+      storeOTP: "hashed",
+      sendVerificationOTP: async ({ email, otp, type }) => {
+        // Dispatched via EMAIL_PROVIDER (console | resend)
+      },
+    }),
+    // optional captcha…
+  ],
   // baseURL/secret come from env (BASE_URL / BETTER_AUTH_SECRET)
 });
 ```
+
+### Email OTP registration
+
+Email/password sign-up creates the user with `emailVerified=false` and does
+**not** issue a session until the user verifies with a 6-digit OTP. The
+`emailOTP` plugin overrides Better Auth's default verification link so
+`emailVerification.sendOnSignUp` / `sendOnSignIn` send an OTP instead.
+
+Flow:
+
+1. `POST /api/auth/sign-up/email` — create account (captcha when enabled).
+2. OTP emailed via the configured provider.
+3. `POST /api/auth/email-otp/verify-email` — mark verified and auto sign-in
+   (`autoSignInAfterVerification`).
+4. Unverified password sign-in returns `EMAIL_NOT_VERIFIED` and triggers a
+   fresh OTP (`sendOnSignIn`); the SPA shows the same OTP step.
+
+Resend uses `POST /api/auth/email-otp/send-verification-otp` (also captcha-
+protected when captcha is enabled).
+
+### Email provider
+
+Outbound mail is selected by env (see `infrastructure/email/`):
+
+| `EMAIL_PROVIDER` | Behavior |
+| --- | --- |
+| `console` (default) | Logs the message (including OTP) to API stdout — local/dev |
+| `resend` | Sends via [Resend](https://resend.com) HTTP API |
+
+- `EMAIL_FROM` — From header (required for `resend`; defaults to
+  `OpenTrip <noreply@localhost>` for console).
+- `RESEND_API_KEY` — required when `EMAIL_PROVIDER=resend`.
 
 ### Social providers
 
@@ -96,21 +148,27 @@ plugins: [
     disableClientRequest: true,
     storeToken: "hashed",
   }),
+  emailOTP({ /* … */ }),
   ...(config.captcha
     ? [
         captcha({
           provider: config.captcha.provider,
           secretKey: config.captcha.secretKey,
+          endpoints: [
+            "/sign-up/email",
+            "/sign-in/email",
+            "/request-password-reset",
+            "/email-otp/send-verification-otp",
+          ],
         }),
       ]
     : []),
 ],
 ```
 
-The plugin intercepts `POST` requests to Better Auth's default protected
-endpoints (`/sign-up/email`, `/sign-in/email`, `/request-password-reset`) and
-verifies the `x-captcha-response` token server-side. No custom controller or
-application code is required.
+The plugin intercepts `POST` requests to the configured endpoints and verifies
+the `x-captcha-response` token server-side. No custom controller or application
+code is required.
 
 ### Environment
 
@@ -128,6 +186,9 @@ exposed to the browser through `shared/config`; it never reaches the backend.
 - `TRUSTED_ORIGINS` — comma-separated web origins allowed to call auth (CSRF).
 - `GOOGLE_CLIENT_ID` — Google OAuth client ID (optional; enables Google sign-in).
 - `GOOGLE_CLIENT_SECRET` — Google OAuth client secret (optional).
+- `EMAIL_PROVIDER` — `console` (default) or `resend`.
+- `EMAIL_FROM` — From address for OTP mail (required for `resend`).
+- `RESEND_API_KEY` — Resend API key (required for `resend`).
 
 Never commit these. Docker uses an env file; Cloudflare uses
 `wrangler secret put` / vars.
@@ -162,13 +223,18 @@ additional field lives in `0005_currency.sql`.
 for OAuth account linking: `UNIQUE ("accountId", "providerId")` on the
 `account` table.
 
+Email OTP reuses the existing `verification` table; no extra migration is
+required for the plugin itself.
+
 ## Client
 
 The frontend uses `better-auth/react` (`apps/web/src/shared/auth`) pointing at
-`/api/auth`, exposing `signIn`, `signUp`, `signOut`, and `useSession`. It loads
-the `inferAdditionalFields` client plugin so `session.user.defaultCurrency` is
-typed; the field shape is declared explicitly since the API is a separate
-package.
+`/api/auth`, with `emailOTPClient` plus `inferAdditionalFields` so
+`session.user.defaultCurrency` is typed. It exposes `signIn`, `signUp`,
+`signOut`, `useSession`, and `authClient.emailOtp.*`.
+
+`AuthForm` is a two-step email flow: credentials → OTP (`OTPField`). Google
+OAuth is unchanged.
 
 Avatar changes use the authenticated `/api/users/avatar` endpoints. The
 application service stores or removes the object and updates Better Auth through
@@ -180,6 +246,9 @@ Native clients use the Better Auth Bearer and one-time-token plugins. Email
 sign-in and sign-up use the standard Better Auth endpoints and persist the
 returned session token. Subsequent requests send
 `Authorization: Bearer <session-token>`; browser cookie sessions are unchanged.
+
+Email sign-up on native must also complete
+`POST /api/auth/email-otp/verify-email` before a session exists.
 
 Google OAuth uses the following bridge so a long-lived session token never
 appears in a callback URL. The native client must open the start URL inside

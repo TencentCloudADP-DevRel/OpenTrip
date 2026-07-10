@@ -1,5 +1,8 @@
 import { createAuthClient } from "better-auth/react";
-import { inferAdditionalFields } from "better-auth/client/plugins";
+import {
+  emailOTPClient,
+  inferAdditionalFields,
+} from "better-auth/client/plugins";
 import { config } from "@/shared/config";
 
 /** Better Auth React client. `baseURL` is the API origin; default `basePath`
@@ -8,11 +11,14 @@ import { config } from "@/shared/config";
  * `inferAdditionalFields` mirrors the server's `user.additionalFields` so
  * `session.user.defaultCurrency` is typed on the client. The API lives in a
  * separate package, so the field shape is declared explicitly rather than
- * inferred from the server `auth` instance. */
+ * inferred from the server `auth` instance.
+ *
+ * `emailOTPClient` enables OTP send/verify for email registration. */
 export const authClient = createAuthClient({
     baseURL: config.baseUrl,
     basePath: "/api/auth",
     plugins: [
+        emailOTPClient(),
         inferAdditionalFields({
             user: {
                 defaultCurrency: {
