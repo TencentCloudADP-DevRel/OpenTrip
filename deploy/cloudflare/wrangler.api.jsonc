@@ -19,9 +19,11 @@
       "custom_domain": true
     }
   ],
-  // Hyperdrive fronts the external PostgreSQL. Replace `id` after:
-  //   wrangler hyperdrive create opentrip-db --connection-string "postgres://…"
-  // or set via `node deploy/cloudflare/scripts/set-hyperdrive.mjs <id>`.
+  // Hyperdrive fronts the origin database. Credentials live only in Hyperdrive
+  // (set via wrangler / dashboard env — never commit host/user/password).
+  //   npx wrangler hyperdrive create opentrip-db --connection-string "$DATABASE_URL"
+  //   node deploy/cloudflare/scripts/set-hyperdrive.mjs <id>
+  // See mysql-origin.example.env for required env keys (local only).
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
@@ -34,6 +36,8 @@
   "vars": {
     "BASE_URL": "https://api.opentrip.im",
     "TRUSTED_ORIGINS": "https://opentrip.im,https://www.opentrip.im,https://opentrip-web.pages.dev",
+    // Must match the Hyperdrive origin engine: postgres | mysql
+    "DATABASE_PROVIDER": "mysql",
     "STORAGE_BACKEND": "s3",
     "STORAGE_ROOT": "uploads",
     "S3_BUCKET": "opentrip-uploads",

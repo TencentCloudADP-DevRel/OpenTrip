@@ -119,9 +119,10 @@ See [`docs/backend/README.md`](docs/backend/README.md).
   schema, migrations directory, and seed command; `DATABASE_URL` is loaded from
   the root `.env` loaded from `prisma.config.ts` (and `tsx --env-file-if-exists`
   for reset/seed scripts).
-- **Use the pg driver adapter.** Construct `PrismaClient` with `PrismaPg`
-  (`@prisma/adapter-pg`) and a `pg.Pool`. Use `createPrismaClient` in
-  `infrastructure/persistence/prisma.ts`.
+- **SQL backend is env-selected.** `DATABASE_PROVIDER=postgres|mysql` (or
+  inferred from `DATABASE_URL`). Runtime code uses `SqlClient`
+  (`infrastructure/persistence/sql`); Postgres remains the Prisma Migrate source
+  of truth, MySQL uses `prisma/mysql/schema.sql`.
 - **Seed via `prisma/seed.ts`.** Run `make db-seed` or
   `pnpm --filter @opentrip/api db:seed`.
 - **Reset via `make db-reset`.** Drops the `public` schema, reapplies Prisma

@@ -1,9 +1,32 @@
-import pg from "pg";
+import type { AppConfig } from "../config";
+import {
+  createSqlClient,
+  createRawMysqlPool,
+  createRawPgPool,
+  type SqlClient,
+} from "./sql";
 
-/** Create a shared connection pool. One pool backs both Better Auth and the
- * domain repositories. */
-export function createPool(connectionString: string): pg.Pool {
-  return new pg.Pool({ connectionString, max: 10 });
+/** Create the shared SqlClient used by domain repositories. */
+export function createPool(
+  databaseUrl: string,
+  provider: AppConfig["databaseProvider"] = "postgres",
+): SqlClient {
+  return createSqlClient(provider, databaseUrl);
 }
 
-export type { Pool } from "pg";
+/**
+ * Driver handle for Better Auth.
+ * - Postgres: node-postgres `Pool`
+ * - MySQL: mysql2/promise `Pool` (Kysely MysqlDialect)
+ */
+export function createAuthDatabase(
+  databaseUrl: string,
+  provider: AppConfig["databaseProvider"],
+): unknown {
+  if (provider === "mysql") {
+    return createRawMysqlPool(databaseUrl);
+  }
+  return createRawPgPool(databaseUrl);
+}
+
+export type { SqlClient as Pool } from "./sql";

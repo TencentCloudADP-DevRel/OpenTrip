@@ -1,80 +1,123 @@
 # Database
 
-PostgreSQL with [Prisma](https://www.prisma.io/) as the ORM. Reference:
+PostgreSQL (default) or MySQL/MariaDB, selected via env. Runtime repositories
+use a dialect-agnostic `SqlClient`. Prisma migrations remain the Postgres source
+of truth; MySQL uses a SQL bootstrap. Reference:
 [../reference/backend-sources.md](../reference/backend-sources.md).
+
+## Provider switch
+
+| Variable | Values | Notes |
+| --- | --- | --- |
+| `DATABASE_PROVIDER` | `postgres` (default) · `mysql` | Explicit backend |
+| `DATABASE_URL` | connection string | Scheme can also infer provider (`mysql://` → mysql) |
+
+Examples:
+
+```bash
+# Postgres (local Docker default)
+DATABASE_PROVIDER=postgres
+DATABASE_URL=postgres://opentrip:opentrip@localhost:5430/opentrip
+
+# MySQL
+DATABASE_PROVIDER=mysql
+DATABASE_URL=mysql://opentrip:opentrip@localhost:3306/opentrip
+```
+
+On Cloudflare Workers the Hyperdrive binding still supplies the connection
+string at runtime; set `DATABASE_PROVIDER` as a Worker var to match the origin
+database (`postgres` or `mysql`). Hyperdrive supports both.
+
+## Runtime architecture
+
+```
+createContainer
+  → createSqlClient(provider, url)     # repositories
+  → createAuthDatabase(provider, url)  # Better Auth (pg.Pool | mysql2 Pool)
+```
+
+Repositories live under `infrastructure/persistence/*-repository.sql.ts` and
+accept `SqlClient`. Callers write PostgreSQL-style `$1` placeholders; the MySQL
+driver rewrites them to `?`. Dialect helpers cover `ON CONFLICT` /
+`INSERT IGNORE` / `ON DUPLICATE KEY`, and `ANY($n)` / `IN (?,?,…)`.
+
+Prisma Client with `@prisma/adapter-pg` is still available for tooling against
+Postgres. Prefer `SqlClient` for app code so both backends stay supported.
 
 ## Connection
 
-`DATABASE_URL` in the root `.env` points at the local Postgres container.
-Production uses the same URL supplied via Hyperdrive on Cloudflare Workers.
-
-Prisma 7 uses driver adapters rather than a bundled query engine. The app
-constructs `PrismaClient` with the `PrismaPg` adapter over a `pg.Pool`:
+`DATABASE_URL` in the root `.env` points at the local database container.
+Production uses the same URL (or Hyperdrive) on Cloudflare Workers.
 
 ```ts
-import { createPrismaClient } from "../infrastructure/persistence/prisma";
+import { createSqlClient } from "../infrastructure/persistence/sql";
+import { loadConfig } from "../infrastructure/config";
 
-const prisma = createPrismaClient(process.env.DATABASE_URL);
+const config = loadConfig(process.env);
+const db = createSqlClient(config.databaseProvider, config.databaseUrl);
 ```
 
-For raw SQL paths (e.g., Better Auth's pg adapter) the shared pool factory in
-`infrastructure/persistence/pool.ts` is still available.
-
-## Prisma setup
+## Postgres workflow (Prisma)
 
 - `apps/api/prisma.config.ts` — schema path, migrations path, datasource URL,
   and seed command.
-- `apps/api/prisma/schema.prisma` — source-of-truth data model. **Do not edit by
-  hand.** Regenerate it from the database with `make db-pull` or
-  `make db-snapshot`.
-- `apps/api/prisma/migrations/` — Prisma migration files. `000000000000_baseline`
-  was generated from the existing database; subsequent changes use
-  `make db-migrate-dev`.
-- `apps/api/prisma/seed.ts` — idempotent demo seed using Prisma Client
-  (`japan-2025`). That row is also the template cloned for each new user on
-  sign-up (see [auth.md](auth.md)).
-- `apps/api/prisma/reset.ts` — drops `public`, reapplies migrations, and seeds.
+- `apps/api/prisma/schema.prisma` — Postgres snapshot. **Do not edit by hand.**
+  Regenerate with `make db-pull` / `make db-snapshot` against a Postgres DB.
+- `apps/api/prisma/migrations/` — Prisma migration files (Postgres only).
+- `apps/api/prisma/seed.ts` — dialect-agnostic seed via `SqlClient`.
+- `apps/api/prisma/reset.ts` — drop + migrate/bootstrap + seed for either backend.
 
-## Schema workflow
+```sh
+make db-migrate      # prisma migrate deploy (postgres)
+make db-seed         # works for both providers
+make db-reset        # provider-aware
+```
 
-1. Make sure Postgres is running (`make postgres-up`) and the database is up to
-   date.
-2. To capture the current database structure as a snapshot:
-   ```sh
-   make db-pull        # alias: make db-snapshot
-   ```
-3. After schema changes, generate the client:
-   ```sh
-   make db-generate
-   ```
-4. To create a migration from schema changes:
-   ```sh
-   make db-migrate-dev
-   ```
-5. To apply pending migrations:
-   ```sh
-   make db-migrate
-   ```
+**Rule: every Postgres schema change must ship its snapshot.** If you create or
+modify a migration, run `make db-pull` afterwards and commit both.
 
-**Rule: every schema change must ship its snapshot.** If you create or modify a
-migration, you must run `make db-pull` afterwards so `schema.prisma` reflects
-the latest database state, then run `make db-generate`. Commit both the
-migration directory and the updated `schema.prisma` together. Never edit
-`schema.prisma` by hand.
+## MySQL workflow
+
+MySQL does not use Prisma Migrate (schema provider is Postgres). Bootstrap with:
+
+```bash
+export DATABASE_PROVIDER=mysql
+export DATABASE_URL=mysql://opentrip:opentrip@localhost:3306/opentrip
+
+# Apply schema
+pnpm --filter @opentrip/api exec tsx --env-file-if-exists=../../.env \
+  prisma/mysql/apply-schema.ts
+
+# Seed demo data
+pnpm db:seed
+
+# Or full reset
+pnpm db:reset
+```
+
+Schema file: [`apps/api/prisma/mysql/schema.sql`](../../apps/api/prisma/mysql/schema.sql).
+When you change the Postgres model, update the MySQL bootstrap in the same
+change set so both backends stay aligned.
+
+Local MySQL via Compose:
+
+```bash
+docker compose -f deploy/docker/compose.yaml --profile mysql up -d mysql
+```
 
 ## Makefile commands
 
 | Target | Purpose |
 |--------|---------|
-| `make db-generate` | Generate Prisma Client from `schema.prisma` |
-| `make db-pull` / `make db-snapshot` | Introspect DB and rewrite `schema.prisma` |
-| `make db-push` | Push schema changes to DB (development only) |
-| `make db-migrate` | Apply pending Prisma migrations |
-| `make db-migrate-dev` | Create a new migration from schema changes |
-| `make db-seed` | Run `prisma/seed.ts` |
-| `make db-reset` | Drop `public`, generate client, migrate, and seed |
-| `make db-init` | Run migrations + seed |
-| `make db-studio` | Open Prisma Studio |
+| `make db-generate` | Generate Prisma Client from `schema.prisma` (Postgres) |
+| `make db-pull` / `make db-snapshot` | Introspect Postgres and rewrite `schema.prisma` |
+| `make db-push` | Push schema changes to Postgres (dev only) |
+| `make db-migrate` | Apply pending Prisma migrations (Postgres) |
+| `make db-migrate-dev` | Create a new Prisma migration from schema changes |
+| `make db-seed` | Run dialect-agnostic seed |
+| `make db-reset` | Provider-aware drop + migrate/bootstrap + seed |
+| `make db-init` | Run migrations then seed (Postgres path) |
+| `make db-studio` | Open Prisma Studio (Postgres) |
 
 ## Business schema
 
@@ -107,21 +150,12 @@ migration directory and the updated `schema.prisma` together. Never edit
 Amounts are stored as integers in their selected currency. The current budget
 algorithm does not convert FX; mixed-currency expenses are persisted/displayed
 with their own currency, while aggregate budget math still sums numeric amounts.
-`lat`/`lng` are `double precision`.
-
-## Legacy SQL migrations
-
-The files in `apps/api/migrations/` (0001–0008) applied the schema before
-Prisma was introduced. They are kept for historical reference. The baseline
-Prisma migration in `apps/api/prisma/migrations/000000000000_baseline/` was
-generated from the live database with `prisma migrate diff` and produces the
-same final schema.
 
 ## Better Auth tables
 
-Created by the baseline migration so the same schema applies to Docker Postgres
-and Hyperdrive-fronted Postgres. If Better Auth options change, regenerate the
-schema with the Better Auth CLI, pull it into `schema.prisma`, and create a new
-Prisma migration — do not edit applied migration files. The `user` table also
-carries a `defaultCurrency` column (a Better Auth `additionalField`) surfaced on
-every session. See [auth.md](auth.md).
+Created by the Postgres baseline migration and the MySQL bootstrap so both
+backends share the same logical schema. If Better Auth options change,
+regenerate for Postgres with the Better Auth CLI, pull into `schema.prisma`,
+create a Prisma migration, **and** update `prisma/mysql/schema.sql`. The `user`
+table also carries a `defaultCurrency` column (a Better Auth `additionalField`)
+surfaced on every session. See [auth.md](auth.md).

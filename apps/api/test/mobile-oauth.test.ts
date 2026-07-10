@@ -8,6 +8,7 @@ const GOOGLE_AUTH_URL =
 
 function baseConfig(googleOAuth: AppConfig["googleOAuth"]): AppConfig {
   return {
+    databaseProvider: "postgres",
     databaseUrl: "postgres://example.test/opentrip",
     betterAuthSecret: "a-secure-test-secret-with-32-characters",
     betterAuthUrl: "https://api.example.test",

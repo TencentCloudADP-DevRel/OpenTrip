@@ -50,23 +50,40 @@ Manual re-run: **Actions → Deploy Cloudflare → Run workflow**.
 
 ## 1. Hyperdrive
 
+Postgres or MySQL origin (set Worker var `DATABASE_PROVIDER` to match):
+
 ```bash
+# Postgres
 npx wrangler hyperdrive create opentrip-db \
   --connection-string "postgres://USER:PASSWORD@HOST:5432/DBNAME"
 
+# or MySQL
+npx wrangler hyperdrive create opentrip-db \
+  --connection-string "mysql://USER:PASSWORD@HOST:3306/DBNAME"
+
 node deploy/cloudflare/scripts/set-hyperdrive.mjs <id>
 # commit deploy/cloudflare/wrangler.api.jsonc
+# set Worker var DATABASE_PROVIDER=postgres|mysql
 ```
 
 Details: [deploy/cloudflare/hyperdrive.md](../../deploy/cloudflare/hyperdrive.md).
 
 ## 2. Migrate + seed
 
-Run migrations against the same database (from a machine that can reach it):
+Run schema apply + seed against the same database (from a machine that can reach it):
 
 ```bash
+# Postgres
 DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DBNAME" pnpm db:migrate
 DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DBNAME" pnpm db:seed
+
+# MySQL
+DATABASE_PROVIDER=mysql \
+DATABASE_URL="mysql://USER:PASSWORD@HOST:3306/DBNAME" \
+  pnpm --filter @opentrip/api exec tsx --env-file-if-exists=../../.env \
+  prisma/mysql/apply-schema.ts
+DATABASE_PROVIDER=mysql \
+DATABASE_URL="mysql://USER:PASSWORD@HOST:3306/DBNAME" pnpm db:seed
 ```
 
 ## 3. API (Workers)

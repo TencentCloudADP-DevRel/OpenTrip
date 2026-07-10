@@ -49,7 +49,8 @@ not part of automated verification.
 | Variable | Used by | Notes |
 | --- | --- | --- |
 | `BASE_URL` | web + api | public API/auth origin used by browser and Better Auth |
-| `DATABASE_URL` | api (Node/Docker) | Postgres connection string |
+| `DATABASE_PROVIDER` | api | `postgres` (default) or `mysql`; inferred from `DATABASE_URL` when omitted |
+| `DATABASE_URL` | api (Node/Docker) | Postgres or MySQL connection string |
 | `BETTER_AUTH_SECRET` | api | >= 32 chars |
 | `TRUSTED_ORIGINS` | api | comma-separated web origins |
 | `STORAGE_BACKEND` | api | required: `fs` on Node/Docker or `s3` for S3-compatible storage |
@@ -62,8 +63,9 @@ not part of automated verification.
 | `S3_SECRET_ACCESS_KEY` | api (`s3`) | secret access key |
 | `S3_FORCE_PATH_STYLE` | api (`s3`) | optional `true`/`false`, default `false` |
 
-On Cloudflare, `DATABASE_URL` is replaced by the Hyperdrive binding. Better Auth
-and S3 credential values are set with `wrangler secret`.
+On Cloudflare, `DATABASE_URL` is replaced by the Hyperdrive binding; set Worker
+var `DATABASE_PROVIDER` to `postgres` or `mysql` to match the origin database.
+Better Auth and S3 credential values are set with `wrangler secret`.
 
 ## Common commands
 

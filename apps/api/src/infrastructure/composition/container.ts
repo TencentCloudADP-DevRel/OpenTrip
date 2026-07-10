@@ -10,11 +10,11 @@ import {
 } from "../../application";
 import { AvatarService } from "../../application/avatar";
 import type { FileStorage } from "../../application/storage";
-import { createPool, type Pool } from "../persistence/pool";
-import { PgTripRepository } from "../persistence/trip-repository.pg";
-import { PgTripInviteRepository } from "../persistence/invite-repository.pg";
-import { PgUserPreferenceRepository } from "../persistence/user-preference-repository.pg";
-import { PgAgentSessionRepository } from "../persistence/agent-repository.pg";
+import { createAuthDatabase, createPool, type Pool } from "../persistence/pool";
+import { SqlTripRepository } from "../persistence/trip-repository.sql";
+import { SqlTripInviteRepository } from "../persistence/invite-repository.sql";
+import { SqlUserPreferenceRepository } from "../persistence/user-preference-repository.sql";
+import { SqlAgentSessionRepository } from "../persistence/agent-repository.sql";
 import { createAuth, type Auth } from "../auth/auth";
 import { createSampleTripTemplateLoader } from "../persistence/sample-trip-template";
 import { CachedWeatherClient } from "../weather/cached-weather-client";
@@ -44,18 +44,24 @@ export interface Container {
 
 /** Wire the runtime-neutral object graph around a selected storage adapter. */
 export function createContainer(config: AppConfig, fileStorage: FileStorage): Container {
-  const pool = createPool(config.databaseUrl);
-  const tripRepository = new PgTripRepository(pool);
-  const auth = createAuth(config, pool, {
+  const pool = createPool(config.databaseUrl, config.databaseProvider);
+  const authDatabase = createAuthDatabase(
+    config.databaseUrl,
+    config.databaseProvider,
+  );
+  const tripRepository = new SqlTripRepository(pool);
+  const auth = createAuth(config, authDatabase, {
     tripRepository,
     loadSampleTripTemplate: createSampleTripTemplateLoader(tripRepository),
   });
   const tripService = new TripService(tripRepository);
   const tripInviteService = new TripInviteService(
-    new PgTripInviteRepository(pool),
+    new SqlTripInviteRepository(pool),
     tripRepository,
   );
-  const preferenceService = new PreferenceService(new PgUserPreferenceRepository(pool));
+  const preferenceService = new PreferenceService(
+    new SqlUserPreferenceRepository(pool),
+  );
   const avatarService = new AvatarService(fileStorage);
   const tripMediaService = new TripMediaService(fileStorage, tripService);
   // Weather: HTTP + agent tools call WeatherService only. Provider clients stay
@@ -74,7 +80,7 @@ export function createContainer(config: AppConfig, fileStorage: FileStorage): Co
   const agentService = config.ai
     ? new AgentService(
         tripRepository,
-        new PgAgentSessionRepository(pool),
+        new SqlAgentSessionRepository(pool),
         new AiSdkAgentModel(config.ai, weatherService, geoService),
         {
           proactiveThreshold: config.ai.proactiveThreshold,

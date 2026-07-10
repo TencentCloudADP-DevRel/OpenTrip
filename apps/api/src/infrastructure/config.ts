@@ -44,7 +44,11 @@ export interface GeoConfig {
     cacheTtlMs: number;
 }
 
+export type DatabaseProvider = "postgres" | "mysql";
+
 export interface AppConfig {
+    /** SQL backend: PostgreSQL (default) or MySQL/MariaDB. */
+    databaseProvider: DatabaseProvider;
     databaseUrl: string;
     betterAuthSecret: string;
     betterAuthUrl: string;
@@ -82,6 +86,8 @@ export type StorageConfig = FileSystemStorageConfig | S3StorageConfig;
 
 export interface RawEnv {
     BASE_URL?: string;
+    /** Explicit SQL backend: `postgres` | `mysql`. Inferred from DATABASE_URL when omitted. */
+    DATABASE_PROVIDER?: string;
     DATABASE_URL?: string;
     BETTER_AUTH_SECRET?: string;
     TRUSTED_ORIGINS?: string;
@@ -150,6 +156,11 @@ export function loadConfig(env: RawEnv, connectionString?: string): AppConfig {
     if (!databaseUrl)
         throw new Error("DATABASE_URL (or Hyperdrive binding) is required");
 
+    const databaseProvider = resolveDatabaseProvider(
+        env.DATABASE_PROVIDER,
+        databaseUrl,
+    );
+
     const betterAuthSecret = env.BETTER_AUTH_SECRET;
     if (!betterAuthSecret || betterAuthSecret.length < 32) {
         throw new Error(
@@ -166,6 +177,7 @@ export function loadConfig(env: RawEnv, connectionString?: string): AppConfig {
     const googleClientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
 
     return {
+        databaseProvider,
         databaseUrl,
         betterAuthSecret,
         betterAuthUrl: baseUrl,
@@ -303,6 +315,30 @@ function requireEnv(value: string | undefined, name: string): string {
     const trimmed = value?.trim();
     if (!trimmed) throw new Error(`${name} is required`);
     return trimmed;
+}
+
+/** Prefer DATABASE_PROVIDER; otherwise infer from the connection string scheme. */
+function resolveDatabaseProvider(
+    providerRaw: string | undefined,
+    databaseUrl: string,
+): DatabaseProvider {
+    const explicit = providerRaw?.trim().toLowerCase();
+    if (explicit === "postgres" || explicit === "postgresql") return "postgres";
+    if (explicit === "mysql" || explicit === "mariadb") return "mysql";
+    if (explicit) {
+        throw new Error(
+            `DATABASE_PROVIDER must be "postgres" or "mysql" (got "${providerRaw}")`,
+        );
+    }
+    const url = databaseUrl.trim();
+    if (
+        url.startsWith("mysql://") ||
+        url.startsWith("mysql2://") ||
+        url.startsWith("mariadb://")
+    ) {
+        return "mysql";
+    }
+    return "postgres";
 }
 
 function parseBoolean(value: string | undefined, name: string): boolean {

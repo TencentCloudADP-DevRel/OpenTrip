@@ -51,17 +51,35 @@ gh secret set AI_API_KEY -R stvlynn/OpenTrip
 
 ## One-time bootstrap
 
-### 1. Hyperdrive (manual — external Postgres)
+### 1. Hyperdrive (manual — external MySQL)
+
+Production vars use `DATABASE_PROVIDER=mysql`. Put origin credentials in
+**local env only** (see [mysql-origin.example.env](mysql-origin.example.env)) —
+never commit host, user, or password.
+
+Hyperdrive **validates the origin on create**, so `DATABASE_URL` must work and
+the host must accept Cloudflare egress.
 
 ```bash
+# Export MYSQL_* or DATABASE_URL from a private env file (gitignored)
+export DATABASE_URL="mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}"
+
 npx wrangler hyperdrive create opentrip-db \
-  --connection-string "postgres://USER:PASSWORD@HOST:5432/DBNAME"
+  --connection-string "$DATABASE_URL"
 
 node deploy/cloudflare/scripts/set-hyperdrive.mjs <id>
-# commit wrangler.api.jsonc
+# commit only the Hyperdrive id in wrangler.api.jsonc (not credentials)
 
-DATABASE_URL="postgres://…" pnpm db:migrate
-# optional: DATABASE_URL="postgres://…" pnpm db:seed
+# Schema + seed (same URL, from a machine that can reach the DB)
+DATABASE_PROVIDER=mysql DATABASE_URL="$DATABASE_URL" \
+  pnpm --filter @opentrip/api db:mysql-schema
+DATABASE_PROVIDER=mysql DATABASE_URL="$DATABASE_URL" pnpm db:seed
+```
+
+Update credentials later (dashboard or wrangler — still not in git):
+
+```bash
+npx wrangler hyperdrive update <id> --connection-string "$DATABASE_URL"
 ```
 
 ### 2. Local secret file (optional, gitignored)

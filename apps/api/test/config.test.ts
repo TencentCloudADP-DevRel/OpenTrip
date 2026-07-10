@@ -7,6 +7,33 @@ const BASE_ENV: RawEnv = {
   BASE_URL: "https://api.example.test",
 };
 
+describe("loadConfig database provider", () => {
+  it("defaults to postgres and accepts mysql from URL or env", () => {
+    const pg = loadConfig({
+      ...BASE_ENV,
+      STORAGE_BACKEND: "fs",
+      STORAGE_ROOT: "/data",
+    });
+    expect(pg.databaseProvider).toBe("postgres");
+
+    const fromUrl = loadConfig({
+      ...BASE_ENV,
+      DATABASE_URL: "mysql://u:p@localhost:3306/opentrip",
+      STORAGE_BACKEND: "fs",
+      STORAGE_ROOT: "/data",
+    });
+    expect(fromUrl.databaseProvider).toBe("mysql");
+
+    const explicit = loadConfig({
+      ...BASE_ENV,
+      DATABASE_PROVIDER: "mysql",
+      STORAGE_BACKEND: "fs",
+      STORAGE_ROOT: "/data",
+    });
+    expect(explicit.databaseProvider).toBe("mysql");
+  });
+});
+
 describe("loadConfig storage", () => {
   it("trusts the native callback origin by default", () => {
     const config = loadConfig({

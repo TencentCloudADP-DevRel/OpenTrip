@@ -1,6 +1,5 @@
 import { betterAuth } from "better-auth";
 import { bearer, captcha, oneTimeToken } from "better-auth/plugins";
-import type { Pool } from "pg";
 import { provisionSampleTripForUser } from "../../application/user/provision-sample-trip";
 import {
   generateUserAvatar,
@@ -32,12 +31,14 @@ export interface CreateAuthOptions {
  * when trip dependencies are wired (see {@link CreateAuthOptions}). */
 export function createAuth(
   config: AppConfig,
-  pool: Pool,
+  /** Driver pool: `pg.Pool` (postgres) or `mysql2` pool (mysql). */
+  database: unknown,
   options: CreateAuthOptions = {},
 ) {
     const { tripRepository, loadSampleTripTemplate } = options;
     return betterAuth({
-        database: pool,
+        // Better Auth auto-detects pg vs mysql2 pools via Kysely dialects.
+        database: database as never,
         secret: config.betterAuthSecret,
         baseURL: config.betterAuthUrl,
         basePath: "/api/auth",

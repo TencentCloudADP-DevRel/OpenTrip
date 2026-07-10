@@ -71,6 +71,7 @@ function mockProvider(
 }
 
 const BASE_ENV: RawEnv = {
+  DATABASE_PROVIDER: "postgres",
   DATABASE_URL: "postgres://example.test/opentrip",
   BETTER_AUTH_SECRET: "a-secure-test-secret-with-32-characters",
   BASE_URL: "https://api.example.test",
