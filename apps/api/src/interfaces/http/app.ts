@@ -39,6 +39,14 @@ const dayNumberSchema = dayNumberParamSchema;
 
 const commentSchema = z.object({ text: z.string().min(1) });
 
+const mobileOAuthStartQuerySchema = z.object({
+  provider: z.literal("google"),
+});
+
+const mobileOAuthExchangeSchema = z.object({
+  code: z.string().min(16).max(512),
+});
+
 const createTripSchema = z.object({
   title: z.string().trim().min(1).max(120),
   currency: z.string().trim().min(1).max(8).optional(),
@@ -177,6 +185,47 @@ export function createApp(container: Container) {
 
   // Better Auth handler.
   app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+
+  // Native clients authenticate in ASWebAuthenticationSession. Better Auth
+  // owns the provider state and callback; this bridge only turns the resulting
+  // cookie session into a short-lived, single-use code for the app.
+  app.get("/api/mobile-auth/oauth/start", async (c) => {
+    const { provider } = mobileOAuthStartQuerySchema.parse(c.req.query());
+    if (!config.googleOAuth) {
+      return fail(c, "oauth_unavailable", "Google sign-in is not configured", 404);
+    }
+    const callbackURL = new URL(
+      "/api/mobile-auth/oauth/complete",
+      config.betterAuthUrl,
+    ).toString();
+    const result = await auth.api.signInSocial({
+      headers: c.req.raw.headers,
+      body: { provider, callbackURL, disableRedirect: true },
+    });
+    if (!result.url) {
+      return fail(c, "oauth_start_failed", "Unable to start Google sign-in", 502);
+    }
+    return ok(c, { url: result.url });
+  });
+
+  app.get("/api/mobile-auth/oauth/complete", async (c) => {
+    try {
+      const { token } = await auth.api.generateOneTimeToken({
+        headers: c.req.raw.headers,
+      });
+      const callback = new URL("opentrip://auth/callback");
+      callback.searchParams.set("code", token);
+      return c.redirect(callback.toString());
+    } catch {
+      return c.redirect("opentrip://auth/callback?error=oauth_session_missing");
+    }
+  });
+
+  app.post("/api/mobile-auth/oauth/exchange", async (c) => {
+    const { code } = mobileOAuthExchangeSchema.parse(await c.req.json());
+    const session = await auth.api.verifyOneTimeToken({ body: { token: code } });
+    return c.json({ token: session.session.token, session });
+  });
 
   app.get("/api/health", (c) => ok(c, { status: "ok" }));
 

@@ -1,5 +1,5 @@
 import { betterAuth } from "better-auth";
-import { captcha } from "better-auth/plugins";
+import { bearer, captcha, oneTimeToken } from "better-auth/plugins";
 import type { Pool } from "pg";
 import { provisionSampleTripForUser } from "../../application/user/provision-sample-trip";
 import {
@@ -93,14 +93,22 @@ export function createAuth(
                 },
             },
         },
-        plugins: config.captcha
-            ? [
-                  captcha({
-                      provider: config.captcha.provider,
-                      secretKey: config.captcha.secretKey,
-                  }),
-              ]
-            : [],
+        plugins: [
+            bearer(),
+            oneTimeToken({
+                expiresIn: 3,
+                disableClientRequest: true,
+                storeToken: "hashed",
+            }),
+            ...(config.captcha
+                ? [
+                      captcha({
+                          provider: config.captcha.provider,
+                          secretKey: config.captcha.secretKey,
+                      }),
+                  ]
+                : []),
+        ],
     });
 }
 

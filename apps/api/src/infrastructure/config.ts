@@ -169,7 +169,7 @@ export function loadConfig(env: RawEnv, connectionString?: string): AppConfig {
         databaseUrl,
         betterAuthSecret,
         betterAuthUrl: baseUrl,
-        trustedOrigins: (env.TRUSTED_ORIGINS ?? baseUrl)
+        trustedOrigins: (env.TRUSTED_ORIGINS ?? `${baseUrl},opentrip://`)
             .split(",")
             .map((origin) => origin.trim())
             .filter(Boolean),

@@ -70,6 +70,9 @@ function extractShippedRoutes(source: string): string[] {
 
 const REQUIRED_DOC_PATHS = [
   "/api/auth/*",
+  "/api/mobile-auth/oauth/start",
+  "/api/mobile-auth/oauth/complete",
+  "/api/mobile-auth/oauth/exchange",
   "/api/health",
   "/api/uploads/*",
   "/api/weather",

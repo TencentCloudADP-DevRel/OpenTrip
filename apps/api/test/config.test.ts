@@ -8,6 +8,19 @@ const BASE_ENV: RawEnv = {
 };
 
 describe("loadConfig storage", () => {
+  it("trusts the native callback origin by default", () => {
+    const config = loadConfig({
+      ...BASE_ENV,
+      STORAGE_BACKEND: "fs",
+      STORAGE_ROOT: "/data/uploads",
+    });
+
+    expect(config.trustedOrigins).toEqual([
+      "https://api.example.test",
+      "opentrip://",
+    ]);
+  });
+
   it("requires an explicit storage backend", () => {
     expect(() => loadConfig(BASE_ENV)).toThrow("STORAGE_BACKEND is required");
   });
@@ -68,4 +81,3 @@ describe("loadConfig storage", () => {
     ).toThrow('S3_FORCE_PATH_STYLE must be either "true" or "false"');
   });
 });
-

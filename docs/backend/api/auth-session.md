@@ -35,6 +35,18 @@ Not every Better Auth plugin path is listed here. Clients need at least:
 | Sign-out | `POST …/sign-out` | Clears session |
 | Update user | Better Auth `updateUser` | e.g. `name`, `defaultCurrency` |
 
+### Native OAuth bridge
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/mobile-auth/oauth/start?provider=google` | Create a Better Auth Google authorization URL |
+| GET | `/api/mobile-auth/oauth/complete` | Convert the browser cookie session to a one-time app callback code |
+| POST | `/api/mobile-auth/oauth/exchange` | Consume `{ code }` and return `{ token, session }` |
+
+The callback code is hashed at rest, valid for three minutes, and consumed on
+first use. Native business requests send the returned session token as a Bearer
+credential.
+
 Captcha (when `CAPTCHA_PROVIDER` is set) intercepts protected auth POSTs via
 header `x-captcha-response`. See [auth.md](../auth.md).
 
