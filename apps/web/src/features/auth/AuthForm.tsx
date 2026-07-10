@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { authClient, signIn, signUp } from "@/shared/auth";
+import {
+  authClient,
+  setTwoFactorRequiredHandler,
+  signIn,
+  signUp,
+} from "@/shared/auth";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import {
@@ -13,7 +18,8 @@ import { config } from "@/shared/config";
 import { CaptchaField, type CaptchaFieldRef } from "./ui/CaptchaField";
 
 type Mode = "signIn" | "signUp";
-type Step = "credentials" | "otp";
+type Step = "credentials" | "otp" | "twoFactor";
+type TwoFactorMethod = "totp" | "backup";
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -64,6 +70,9 @@ export function AuthForm() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [otp, setOtp] = useState("");
+    const [twoFactorCode, setTwoFactorCode] = useState("");
+    const [twoFactorMethod, setTwoFactorMethod] =
+        useState<TwoFactorMethod>("totp");
     const [pending, setPending] = useState(false);
     const [resendIn, setResendIn] = useState(0);
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -74,6 +83,19 @@ export function AuthForm() {
 
     const isSignUp = mode === "signUp";
     const ns = isSignUp ? "signUp" : "signIn";
+
+    const enterTwoFactorStep = () => {
+        setTwoFactorCode("");
+        setTwoFactorMethod("totp");
+        setStep("twoFactor");
+        setPending(false);
+        captchaRef.current?.reset();
+    };
+
+    useEffect(() => {
+        setTwoFactorRequiredHandler(enterTwoFactorStep);
+        return () => setTwoFactorRequiredHandler(null);
+    }, []);
 
     useEffect(() => {
         if (resendIn <= 0) return;
@@ -232,10 +254,36 @@ export function AuthForm() {
         }
     }
 
+    async function submitTwoFactor(e: React.FormEvent) {
+        e.preventDefault();
+        const code = twoFactorCode.trim();
+        if (!code) return;
+
+        setPending(true);
+        try {
+            const result =
+                twoFactorMethod === "backup"
+                    ? await authClient.twoFactor.verifyBackupCode({ code })
+                    : await authClient.twoFactor.verifyTotp({ code });
+            if (result.error) {
+                showAuthError(t("errors.twoFactorInvalid"));
+                setTwoFactorCode("");
+                return;
+            }
+            // Session cookie is set; Gate re-renders via useSession.
+        } catch {
+            showAuthError(t("errors.twoFactorInvalid"));
+            setTwoFactorCode("");
+        } finally {
+            setPending(false);
+        }
+    }
+
     function switchMode() {
         setMode(isSignUp ? "signIn" : "signUp");
         setStep("credentials");
         setOtp("");
+        setTwoFactorCode("");
         setResendIn(0);
         captchaRef.current?.reset();
     }
@@ -243,8 +291,77 @@ export function AuthForm() {
     function backToCredentials() {
         setStep("credentials");
         setOtp("");
+        setTwoFactorCode("");
         setResendIn(0);
         captchaRef.current?.reset();
+    }
+
+    if (step === "twoFactor") {
+        return (
+            <form
+                onSubmit={submitTwoFactor}
+                className="flex flex-col gap-4 wf-enter-stagger"
+            >
+                <div className="wf-enter flex flex-col gap-1">
+                    <h1 className="text-2xl font-semibold tracking-[-0.01em] text-balance">
+                        {t("twoFactor.title")}
+                    </h1>
+                    <p className="text-sm text-pretty text-muted-foreground">
+                        {twoFactorMethod === "backup"
+                            ? t("twoFactor.backupSubtitle")
+                            : t("twoFactor.subtitle")}
+                    </p>
+                </div>
+
+                <label className="wf-enter flex flex-col gap-1.5 text-sm font-medium">
+                    {twoFactorMethod === "backup"
+                        ? t("twoFactor.backupLabel")
+                        : t("twoFactor.label")}
+                    <Input
+                        type="text"
+                        inputMode={
+                            twoFactorMethod === "backup" ? "text" : "numeric"
+                        }
+                        autoComplete="one-time-code"
+                        value={twoFactorCode}
+                        onChange={(e) => setTwoFactorCode(e.target.value)}
+                        className="tabular-nums"
+                        required
+                    />
+                </label>
+
+                <div className="wf-enter flex flex-col gap-2">
+                    <Button
+                        type="submit"
+                        size="lg"
+                        disabled={pending || !twoFactorCode.trim()}
+                    >
+                        {t("twoFactor.submit")}
+                    </Button>
+                    <button
+                        type="button"
+                        className="inline-flex min-h-10 items-center justify-center text-sm text-muted-foreground transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-foreground hover:underline active:scale-[var(--press-scale)]"
+                        onClick={() => {
+                            setTwoFactorMethod((m) =>
+                                m === "totp" ? "backup" : "totp",
+                            );
+                            setTwoFactorCode("");
+                        }}
+                    >
+                        {twoFactorMethod === "backup"
+                            ? t("twoFactor.useApp")
+                            : t("twoFactor.useBackup")}
+                    </button>
+                    <button
+                        type="button"
+                        className="inline-flex min-h-10 items-center justify-center text-sm text-muted-foreground transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-foreground hover:underline active:scale-[var(--press-scale)]"
+                        onClick={backToCredentials}
+                    >
+                        {t("otp.back")}
+                    </button>
+                </div>
+            </form>
+        );
     }
 
     if (step === "otp") {

@@ -10,9 +10,13 @@ Reference: [../reference/backend-sources.md](../reference/backend-sources.md).
 ```ts
 export const auth = betterAuth({
   database: pool,               // pg.Pool
+  appName: "OpenTrip",
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    sendResetPassword: async ({ user, url }) => {
+      // Link email via EMAIL_PROVIDER (console | resend)
+    },
   },
   emailVerification: {
     sendOnSignUp: true,
@@ -38,6 +42,12 @@ export const auth = betterAuth({
     : undefined,
   trustedOrigins: config.trustedOrigins,
   user: {
+    changeEmail: {
+      enabled: true,
+      sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
+        // Confirmation link to the *current* email
+      },
+    },
     additionalFields: {
       // User preference: default currency for new stop costs.
       defaultCurrency: { type: "string", required: false, defaultValue: "JPY", input: true },
@@ -49,10 +59,12 @@ export const auth = betterAuth({
     emailOTP({
       overrideDefaultEmailVerification: true,
       storeOTP: "hashed",
+      changeEmail: { enabled: true, verifyCurrentEmail: true },
       sendVerificationOTP: async ({ email, otp, type }) => {
         // Dispatched via EMAIL_PROVIDER (console | resend)
       },
     }),
+    twoFactor({ issuer: "OpenTrip", allowPasswordless: true }),
     // optional captcha…
   ],
   // baseURL/secret come from env (BASE_URL / BETTER_AUTH_SECRET)
@@ -78,18 +90,78 @@ Flow:
 Resend uses `POST /api/auth/email-otp/send-verification-otp` (also captcha-
 protected when captcha is enabled).
 
+### Change email
+
+Settings → Profile → Account & security uses the emailOTP change-email flow
+(preferred over the link-based `/change-email` path because the app already
+verifies with OTP):
+
+1. `POST /api/auth/email-otp/send-verification-otp` with
+   `type: "email-verification"` — OTP to the **current** email
+   (`emailOTP.changeEmail.verifyCurrentEmail`).
+2. `POST /api/auth/email-otp/request-email-change` — `{ newEmail, otp }`
+   verifies the current inbox and emails an OTP to the **new** address
+   (`type: "change-email"`).
+3. `POST /api/auth/email-otp/change-email` — `{ newEmail, otp }` applies the
+   change and marks the new email verified.
+
+`user.changeEmail.enabled` plus `sendChangeEmailConfirmation` remain configured
+for the built-in link confirmation path; the SPA uses the OTP endpoints above.
+
+### Password change and setup
+
+Logged-in users with a credential account call
+`POST /api/auth/change-password` (`currentPassword`, `newPassword`,
+`revokeOtherSessions`).
+
+Google-only accounts (no credential row) set a first password via email OTP:
+
+1. `POST /api/auth/email-otp/request-password-reset` — OTP
+   (`type: "forget-password"`).
+2. `POST /api/auth/email-otp/reset-password` — `{ email, otp, password }`
+   creates or updates the credential account.
+
+`emailAndPassword.sendResetPassword` also sends a **link** email for the
+standard `/request-password-reset` endpoint (captcha-protected). A dedicated
+forgot-password SPA page is not shipped yet; the link handler is ready for it.
+
+### Two-factor authentication (TOTP)
+
+The `twoFactor` plugin stores secrets in the `twoFactor` table and
+`user.twoFactorEnabled`. Issuer is `OpenTrip`. `allowPasswordless: true` lets
+accounts without a password enroll (credential accounts still must confirm
+their password).
+
+Enrollment (Settings → Profile):
+
+1. `POST /api/auth/two-factor/enable` — returns `totpURI` + `backupCodes`.
+2. User scans the QR / enters the secret, then
+   `POST /api/auth/two-factor/verify-totp` — sets `twoFactorEnabled`.
+3. Backup codes are shown once; regenerate with
+   `POST /api/auth/two-factor/generate-backup-codes`.
+
+Disable: `POST /api/auth/two-factor/disable`.
+
+Sign-in: after a successful password sign-in, `twoFactorClient` invokes
+`onTwoFactorRedirect`. `AuthForm` shows a TOTP (or backup code) step and calls
+`verifyTotp` / `verifyBackupCode` before the session is usable.
+
 ### Email provider
 
 Outbound mail is selected by env (see `infrastructure/email/`):
 
 | `EMAIL_PROVIDER` | Behavior |
 | --- | --- |
-| `console` (default) | Logs the message (including OTP) to API stdout — local/dev |
+| `console` (default) | Logs the message (including OTP / links) to API stdout — local/dev |
 | `resend` | Sends via [Resend](https://resend.com) HTTP API |
 
 - `EMAIL_FROM` — From header (required for `resend`; defaults to
   `OpenTrip <noreply@localhost>` for console).
 - `RESEND_API_KEY` — required when `EMAIL_PROVIDER=resend`.
+
+OTP copy is built by `buildOtpEmail` (`sign-in`, `email-verification`,
+`forget-password`, `change-email`). Link copy is built by `buildLinkEmail`
+(`reset-password`, `change-email-confirmation`).
 
 ### Social providers
 
@@ -148,7 +220,8 @@ plugins: [
     disableClientRequest: true,
     storeToken: "hashed",
   }),
-  emailOTP({ /* … */ }),
+  emailOTP({ /* … */, changeEmail: { enabled: true, verifyCurrentEmail: true } }),
+  twoFactor({ issuer: "OpenTrip", allowPasswordless: true }),
   ...(config.captcha
     ? [
         captcha({
@@ -226,15 +299,25 @@ for OAuth account linking: `UNIQUE ("accountId", "providerId")` on the
 Email OTP reuses the existing `verification` table; no extra migration is
 required for the plugin itself.
 
+The `twoFactor` plugin adds `user.twoFactorEnabled` and the `twoFactor` table
+(secret, backup codes, lockout fields). Prisma migration:
+`apps/api/prisma/migrations/*_two_factor`. Keep
+`apps/api/prisma/mysql/schema.sql` in sync for MySQL deployments.
+
 ## Client
 
 The frontend uses `better-auth/react` (`apps/web/src/shared/auth`) pointing at
-`/api/auth`, with `emailOTPClient` plus `inferAdditionalFields` so
-`session.user.defaultCurrency` is typed. It exposes `signIn`, `signUp`,
-`signOut`, `useSession`, and `authClient.emailOtp.*`.
+`/api/auth`, with `emailOTPClient`, `twoFactorClient`, and
+`inferAdditionalFields` so `session.user.defaultCurrency` and
+`session.user.twoFactorEnabled` are typed. It exposes `signIn`, `signUp`,
+`signOut`, `useSession`, `authClient.emailOtp.*`, and `authClient.twoFactor.*`.
 
-`AuthForm` is a two-step email flow: credentials → OTP (`OTPField`). Google
-OAuth is unchanged.
+`AuthForm` is a multi-step email flow: credentials → email OTP (`OTPField`) or
+2FA challenge (TOTP / backup code). Google OAuth is unchanged.
+
+Settings → Profile (`ProfileForm` + `AccountSecuritySection`) covers display
+name / avatar plus email change, password change or first-time setup, and 2FA
+enrollment / management.
 
 Avatar changes use the authenticated `/api/users/avatar` endpoints. The
 application service stores or removes the object and updates Better Auth through

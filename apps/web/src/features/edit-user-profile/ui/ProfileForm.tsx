@@ -87,6 +87,7 @@ export function ProfileForm(): React.ReactElement {
                     type="button"
                     variant="primary"
                     disabled={saving || avatarUploading}
+                    className="active:scale-[0.96]"
                     onClick={() => void saveProfile()}
                 >
                     {saving

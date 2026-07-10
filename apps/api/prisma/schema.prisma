@@ -249,6 +249,20 @@ model trips {
   trip_members       trip_members[]
 }
 
+model twoFactor {
+  id                      String    @id
+  secret                  String
+  backupCodes             String
+  userId                  String
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0)
+  lockedUntil             DateTime? @db.Timestamptz(6)
+  user                    user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([secret])
+  @@index([userId])
+}
+
 model user {
   id               String            @id
   name             String
@@ -258,8 +272,10 @@ model user {
   createdAt        DateTime          @default(now()) @db.Timestamptz(6)
   updatedAt        DateTime          @default(now()) @db.Timestamptz(6)
   defaultCurrency  String            @default("JPY")
+  twoFactorEnabled Boolean           @default(false)
   account          account[]
   session          session[]
+  twoFactor        twoFactor[]
   user_preferences user_preferences?
 }
 

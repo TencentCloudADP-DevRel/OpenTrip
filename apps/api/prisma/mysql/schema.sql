@@ -14,8 +14,23 @@ CREATE TABLE IF NOT EXISTS `user` (
   `createdAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `updatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   `defaultCurrency` VARCHAR(16) NOT NULL DEFAULT 'JPY',
+  `twoFactorEnabled` TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `user_email_key` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `twoFactor` (
+  `id` VARCHAR(191) NOT NULL,
+  `secret` TEXT NOT NULL,
+  `backupCodes` TEXT NOT NULL,
+  `userId` VARCHAR(191) NOT NULL,
+  `verified` TINYINT(1) NULL DEFAULT 1,
+  `failedVerificationCount` INT NULL DEFAULT 0,
+  `lockedUntil` DATETIME(6) NULL,
+  PRIMARY KEY (`id`),
+  KEY `twoFactor_secret_idx` (`secret`(191)),
+  KEY `twoFactor_userId_idx` (`userId`),
+  CONSTRAINT `twoFactor_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `user` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `session` (

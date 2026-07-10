@@ -1,7 +1,19 @@
-import type { ReactNode } from "react";
-import { CircleUserRound, Info, Settings2, X, type LucideIcon } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  ChevronLeft,
+  CircleUserRound,
+  Info,
+  Settings2,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { ProfileForm } from "@/features/edit-user-profile";
+import {
+  AccountSecurityDetail,
+  AccountSecuritySection,
+  ProfileForm,
+  type SecurityView,
+} from "@/features/edit-user-profile";
 import { CurrencySelect } from "@/features/set-default-currency";
 import { useSettings, type SettingsPane } from "@/features/settings";
 import { ThemeModeSelect } from "@/features/toggle-theme";
@@ -29,8 +41,24 @@ const NAV_ITEMS: Array<{ pane: SettingsPane; icon: LucideIcon; group: "personal"
 export function SettingsDialog(): React.ReactElement {
   const { t } = useTranslation("common");
   const { open, pane, setOpen, setPane } = useSettings();
-  const title = t(`settings.${pane}.title`);
-  const description = t(`settings.${pane}.description`);
+  const [securityView, setSecurityView] = useState<SecurityView | null>(null);
+
+  // Drill-in state is ephemeral: reset when the pane changes or dialog closes.
+  useEffect(() => {
+    setSecurityView(null);
+  }, [pane]);
+  useEffect(() => {
+    if (!open) setSecurityView(null);
+  }, [open]);
+
+  const closeSecurity = () => setSecurityView(null);
+
+  const title = securityView
+    ? t(`settings.profile.security.${securityView}.title`)
+    : t(`settings.${pane}.title`);
+  const description = securityView
+    ? t(`settings.profile.security.${securityView}.desc`)
+    : t(`settings.${pane}.description`);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -38,7 +66,12 @@ export function SettingsDialog(): React.ReactElement {
         <DialogBackdrop className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-[opacity] duration-200 data-[ending-style]:opacity-0" />
         <DialogViewport className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 md:p-6">
           <DialogPopup className="flex h-[min(42rem,calc(100dvh-1.5rem))] w-full max-w-[860px] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-border),var(--shadow-lg)] outline-none transition-[opacity,scale] duration-200 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 md:h-[560px] md:flex-row">
-            <SettingsNavigation pane={pane} onSelect={setPane} />
+            <SettingsNavigation
+              pane={pane}
+              onSelect={setPane}
+              backLabel={securityView ? t("settings.nav.profile") : null}
+              onBack={closeSecurity}
+            />
 
             <section className="relative flex min-h-0 min-w-0 flex-1 flex-col">
               <DialogClose type="button" className={cn("absolute right-3 top-3 z-10 inline-flex size-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground", interactive)}>
@@ -57,7 +90,17 @@ export function SettingsDialog(): React.ReactElement {
                 </header>
 
                 {pane === "profile" ? (
-                  <ProfileForm />
+                  securityView ? (
+                    <AccountSecurityDetail
+                      view={securityView}
+                      onDone={closeSecurity}
+                    />
+                  ) : (
+                    <div className="flex flex-col gap-7">
+                      <ProfileForm />
+                      <AccountSecuritySection onOpen={setSecurityView} />
+                    </div>
+                  )
                 ) : pane === "preferences" ? (
                   <PreferencesPane />
                 ) : (
@@ -75,13 +118,30 @@ export function SettingsDialog(): React.ReactElement {
 function SettingsNavigation({
   pane,
   onSelect,
+  backLabel,
+  onBack,
 }: {
   pane: SettingsPane;
   onSelect: (pane: SettingsPane) => void;
+  backLabel: string | null;
+  onBack: () => void;
 }): React.ReactElement {
   const { t } = useTranslation("common");
   return (
     <aside className="flex flex-none gap-2 overflow-x-auto border-b border-border bg-sidebar px-3 py-3 md:w-56 md:flex-col md:gap-6 md:overflow-visible md:border-b-0 md:px-3 md:py-5">
+      {backLabel ? (
+        <button
+          type="button"
+          onClick={onBack}
+          className={cn(
+            "flex min-h-10 flex-none items-center gap-1.5 rounded-lg px-2 py-2 text-left text-xs font-semibold text-foreground hover:bg-accent md:w-full",
+            interactive,
+          )}
+        >
+          <ChevronLeft aria-hidden="true" className="size-4" />
+          {backLabel}
+        </button>
+      ) : null}
       {(["personal", "application"] as const).map((group) => (
         <div key={group} className="flex flex-none gap-1 md:block">
           <p className="hidden px-2 pb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground md:block">

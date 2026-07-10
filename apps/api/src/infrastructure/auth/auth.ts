@@ -1,5 +1,11 @@
 import { betterAuth } from "better-auth";
-import { bearer, captcha, emailOTP, oneTimeToken } from "better-auth/plugins";
+import {
+  bearer,
+  captcha,
+  emailOTP,
+  oneTimeToken,
+  twoFactor,
+} from "better-auth/plugins";
 import { provisionSampleTripForUser } from "../../application/user/provision-sample-trip";
 import {
   generateUserAvatar,
@@ -7,6 +13,7 @@ import {
 } from "../../application/user/user-initializer";
 import type { Trip, TripRepository } from "../../domain/trip";
 import { createEmailSender } from "../email/create-email-sender";
+import { buildLinkEmail } from "../email/link-email";
 import { buildOtpEmail } from "../email/otp-email";
 import type { AppConfig } from "../config";
 import { mapGoogleProfileToDto } from "./oauth-profile-mapper";
@@ -29,7 +36,8 @@ const CAPTCHA_ENDPOINTS = [
 ] as const;
 
 /** Build Better Auth over the shared pg pool. Email + password (OTP-verified
- * sign-up) plus optional Google OAuth.
+ * sign-up) plus optional Google OAuth, change-email / password reset mail,
+ * and TOTP two-factor authentication.
  *
  * Email registration requires OTP verification before a session is issued
  * (`requireEmailVerification` + `emailOTP` with
@@ -59,6 +67,7 @@ export function createAuth(
     return betterAuth({
         // Better Auth auto-detects pg vs mysql2 pools via Kysely dialects.
         database: database as never,
+        appName: "OpenTrip",
         secret: config.betterAuthSecret,
         baseURL: config.betterAuthUrl,
         basePath: "/api/auth",
@@ -66,6 +75,19 @@ export function createAuth(
         emailAndPassword: {
             enabled: true,
             requireEmailVerification: true,
+            sendResetPassword: async ({ user, url }) => {
+                const message = buildLinkEmail({
+                    to: user.email,
+                    type: "reset-password",
+                    url,
+                });
+                try {
+                    await emailSender.send(message);
+                } catch (err) {
+                    console.error("Failed to send password reset email:", err);
+                    throw err;
+                }
+            },
         },
         emailVerification: {
             // With emailOTP.overrideDefaultEmailVerification, this sends an OTP
@@ -93,6 +115,26 @@ export function createAuth(
               }
             : undefined,
         user: {
+            changeEmail: {
+                enabled: true,
+                sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
+                    const message = buildLinkEmail({
+                        to: user.email,
+                        type: "change-email-confirmation",
+                        url,
+                        detail: `Requested new email: ${newEmail}`,
+                    });
+                    try {
+                        await emailSender.send(message);
+                    } catch (err) {
+                        console.error(
+                            "Failed to send change-email confirmation:",
+                            err,
+                        );
+                        throw err;
+                    }
+                },
+            },
             additionalFields: {
                 defaultCurrency: {
                     type: "string",
@@ -137,6 +179,10 @@ export function createAuth(
                 expiresIn: OTP_EXPIRES_IN_SECONDS,
                 storeOTP: "hashed",
                 overrideDefaultEmailVerification: true,
+                changeEmail: {
+                    enabled: true,
+                    verifyCurrentEmail: true,
+                },
                 async sendVerificationOTP({ email, otp, type }) {
                     const message = buildOtpEmail({
                         to: email,
@@ -155,6 +201,12 @@ export function createAuth(
                         throw err;
                     }
                 },
+            }),
+            twoFactor({
+                issuer: "OpenTrip",
+                // Google-only accounts can enroll after setting a password, or
+                // without one when they have no credential account yet.
+                allowPasswordless: true,
             }),
             ...(config.captcha
                 ? [
