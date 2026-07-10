@@ -203,6 +203,21 @@ export function createApp(container: Container) {
     }
   });
 
+  // Safety net: browsers that land on the API origin after OAuth (missing
+  // callbackURL) hit `/` and used to see plain 404. Send them to the SPA.
+  app.get("/", (c) => {
+    const webOrigin =
+      config.trustedOrigins.find(
+        (origin) =>
+          origin.startsWith("https://") &&
+          origin !== config.betterAuthUrl &&
+          !origin.includes("pages.dev"),
+      ) ??
+      config.trustedOrigins.find((origin) => origin.startsWith("https://"));
+    if (webOrigin) return c.redirect(webOrigin.endsWith("/") ? webOrigin : `${webOrigin}/`);
+    return c.text("OpenTrip API", 200);
+  });
+
   // Native clients authenticate in ASWebAuthenticationSession. The start
   // endpoint must be opened inside that session so Better Auth's OAuth state
   // cookie lands in the same jar as Google's callback. This bridge only turns
