@@ -25,6 +25,11 @@ import { createGeoProvider } from "../geo/create-geo-provider";
 import { AiSdkAgentModel } from "../ai/agent-model.ai-sdk";
 import type { AppConfig } from "../config";
 
+export interface CreateContainerOptions {
+  /** Max connections for SQL + auth pools (Workers direct MySQL: use 1). */
+  poolMax?: number;
+}
+
 export interface Container {
   config: AppConfig;
   pool: Pool;
@@ -40,16 +45,21 @@ export interface Container {
   tripMediaService: TripMediaService;
   /** Null when AI is not configured; agent routes then respond 404. */
   agentService: AgentService | null;
+  /** Close SQL + auth driver pools (required on Workers per-request graphs). */
+  dispose: () => Promise<void>;
 }
 
 /** Wire the runtime-neutral object graph around a selected storage adapter. */
-export function createContainer(config: AppConfig, fileStorage: FileStorage): Container {
-  // Workers: keep the pool small — isolates are short-lived and do not need
-  // Hyperdrive-scale pooling when using a direct DATABASE_URL secret.
-  const pool = createPool(config, { max: 5 });
-  const authDatabase = createAuthDatabase(config, { max: 5 });
+export function createContainer(
+  config: AppConfig,
+  fileStorage: FileStorage,
+  options?: CreateContainerOptions,
+): Container {
+  const poolMax = options?.poolMax ?? 5;
+  const pool = createPool(config, { max: poolMax });
+  const authDatabase = createAuthDatabase(config, { max: poolMax });
   const tripRepository = new SqlTripRepository(pool);
-  const auth = createAuth(config, authDatabase, {
+  const auth = createAuth(config, authDatabase.driver, {
     tripRepository,
     loadSampleTripTemplate: createSampleTripTemplateLoader(tripRepository),
   });
@@ -63,18 +73,12 @@ export function createContainer(config: AppConfig, fileStorage: FileStorage): Co
   );
   const avatarService = new AvatarService(fileStorage);
   const tripMediaService = new TripMediaService(fileStorage, tripService);
-  // Weather: HTTP + agent tools call WeatherService only. Provider clients stay
-  // behind WeatherClient (cache decorator → OpenWeatherMap today).
   const openWeatherClient = new OpenWeatherMapClient(config.openWeatherMapApiKey);
   const cachedWeatherClient = new CachedWeatherClient(openWeatherClient);
   const weatherService = new WeatherService(cachedWeatherClient);
-  // FX: budget settle-up calls FxService only. Provider stays behind FxClient
-  // (cache decorator → Frankfurter today).
   const frankfurterClient = new FrankfurterClient();
   const cachedFxClient = new CachedFxClient(frankfurterClient);
   const fxService = new FxService(cachedFxClient);
-  // Geo: agent read tools call GeoService only. Provider (OSM | Google) is
-  // selected at composition time via GEO_PROVIDER.
   const geoService = new GeoService(createGeoProvider(config.geo));
   const agentService = config.ai
     ? new AgentService(
@@ -86,6 +90,7 @@ export function createContainer(config: AppConfig, fileStorage: FileStorage): Co
         },
       )
     : null;
+
   return {
     config,
     pool,
@@ -100,5 +105,8 @@ export function createContainer(config: AppConfig, fileStorage: FileStorage): Co
     avatarService,
     tripMediaService,
     agentService,
+    dispose: async () => {
+      await Promise.allSettled([pool.end(), authDatabase.end()]);
+    },
   };
 }

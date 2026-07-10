@@ -81,6 +81,7 @@ function createTestApp(options: {
     avatarService: {} as Container["avatarService"],
     tripMediaService: {} as Container["tripMediaService"],
     agentService: null,
+    dispose: async () => {},
   } satisfies Container;
 
   return { app: createApp(container), signInSocial };

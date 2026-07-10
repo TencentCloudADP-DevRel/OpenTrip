@@ -82,12 +82,19 @@ function poolConfig(
   // from the connection string alone.
   const uri =
     mode === "off" ? stripSslQueryParams(connectionString) : connectionString;
+  const max = options?.max ?? 10;
   const base: mysql.PoolOptions = {
     uri,
-    connectionLimit: options?.max ?? 10,
+    connectionLimit: max,
+    // Avoid holding idle sockets that Workers will freeze/close.
+    maxIdle: Math.min(max, 1),
+    idleTimeout: 5_000,
+    waitForConnections: true,
+    queueLimit: 10,
     dateStrings: false,
     supportBigNumbers: true,
     enableKeepAlive: true,
+    keepAliveInitialDelay: 0,
   };
   if (ssl) base.ssl = ssl;
   return base;
