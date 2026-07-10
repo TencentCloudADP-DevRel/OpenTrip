@@ -21,6 +21,58 @@
     "by": "by {{name}}",
     "createdBy": "{{name}} created {{when}}",
     "moreMembers": "{{count}} more",
-    "open": "Open"
+    "open": "Open",
+    "coverAlt": "Cover photo for {{title}}"
+  },
+  "wizard": {
+    "tbd": "TBD",
+    "next": "Next",
+    "back": "Back",
+    "create": "Create trip",
+    "titleFromDestination": "{{destination}} trip",
+    "steps": {
+      "destination": {
+        "title": "Where to?",
+        "description": "Pick a city or region for this trip.",
+        "placeholder": "Tokyo, Kyoto…"
+      },
+      "duration": {
+        "title": "How many days?",
+        "description": "Rough length of the trip.",
+        "placeholder": "5"
+      },
+      "dates": {
+        "title": "When?",
+        "description": "Optional start and end dates.",
+        "start": "Start",
+        "end": "End"
+      },
+      "budget": {
+        "title": "Budget?",
+        "description": "A planned total helps the agent stay realistic.",
+        "placeholder": "100000",
+        "currencyLabel": "Currency"
+      },
+      "party": {
+        "title": "How many people?",
+        "description": "Planned party size — you can invite members later.",
+        "placeholder": "2"
+      },
+      "review": {
+        "title": "Looks good?",
+        "description": "Create the trip with these details. TBD fields stay open."
+      }
+    },
+    "review": {
+      "destination": "Destination",
+      "duration": "Duration",
+      "dates": "Dates",
+      "budget": "Budget",
+      "party": "People",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "people_one": "{{count}} person",
+      "people_other": "{{count}} people"
+    }
   }
 }

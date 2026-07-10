@@ -9,6 +9,7 @@ import {
   type MemberSnapshot,
   type StopCategory,
   type StopSnapshot,
+  type TripIntake,
   type TripSnapshot,
 } from "./types";
 
@@ -91,6 +92,20 @@ export interface UpdateDayDraft {
 export interface CreateTripDraft {
   title: string;
   currency?: string;
+  /** ISO `YYYY-MM-DD` start; omitted means TBD (defaults to today for day rows). */
+  startDate?: string;
+  /** ISO `YYYY-MM-DD` inclusive end; omitted means TBD. */
+  endDate?: string;
+  /** Planned day count; omitted means TBD (defaults to 1 or derived from dates). */
+  dayCount?: number;
+  /** Destination city/region label; omitted means TBD. */
+  destination?: string;
+  /** Planned budget amount in major currency units; omitted means TBD. */
+  budgetAmount?: number;
+  /** Planned party size; omitted means TBD. Does not create members. */
+  partySize?: number;
+  /** Cover image URL resolved by the application layer (e.g. Unsplash). */
+  coverUrl?: string | null;
 }
 
 export interface TripOwner {
@@ -165,6 +180,90 @@ function addDaysIso(date: string, days: number): string {
   ].join("-");
 }
 
+/** Inclusive day count between two ISO dates, or null when invalid / inverted. */
+function inclusiveDayCount(start: string, end: string): number | null {
+  if (!ISO_DATE.test(start) || !ISO_DATE.test(end)) return null;
+  const [ys, ms, ds] = start.split("-").map(Number) as [number, number, number];
+  const [ye, me, de] = end.split("-").map(Number) as [number, number, number];
+  const a = Date.UTC(ys, ms - 1, ds);
+  const b = Date.UTC(ye, me - 1, de);
+  if (b < a) return null;
+  return Math.floor((b - a) / 86_400_000) + 1;
+}
+
+/** Build intake + day schedule from a create draft. */
+function resolveCreateSchedule(draft: CreateTripDraft): {
+  startDate: string;
+  endDate: string;
+  dayCount: number;
+  intake: TripIntake | null;
+  agentSeedPending: boolean;
+} {
+  const destination = draft.destination?.trim() || undefined;
+  const budgetAmount =
+    draft.budgetAmount != null && Number.isFinite(draft.budgetAmount) && draft.budgetAmount > 0
+      ? draft.budgetAmount
+      : undefined;
+  const partySize =
+    draft.partySize != null && Number.isInteger(draft.partySize) && draft.partySize > 0
+      ? draft.partySize
+      : undefined;
+
+  const startRaw = draft.startDate?.trim();
+  const endRaw = draft.endDate?.trim();
+  const startOk = startRaw && ISO_DATE.test(startRaw) ? startRaw : undefined;
+  const endOk = endRaw && ISO_DATE.test(endRaw) ? endRaw : undefined;
+  const dayCountRaw =
+    draft.dayCount != null && Number.isInteger(draft.dayCount) && draft.dayCount > 0
+      ? draft.dayCount
+      : undefined;
+
+  let dayCount = 1;
+  let startDate = todayIso();
+  let endDate = "";
+
+  if (startOk && endOk) {
+    const derived = inclusiveDayCount(startOk, endOk);
+    if (derived != null) {
+      startDate = startOk;
+      endDate = endOk;
+      dayCount = derived;
+    }
+  } else if (startOk && dayCountRaw) {
+    startDate = startOk;
+    dayCount = dayCountRaw;
+    endDate = addDaysIso(startDate, dayCount - 1);
+  } else if (dayCountRaw) {
+    startDate = startOk ?? todayIso();
+    dayCount = dayCountRaw;
+    endDate = addDaysIso(startDate, dayCount - 1);
+  } else if (startOk) {
+    startDate = startOk;
+    endDate = "";
+    dayCount = 1;
+  }
+
+  const intake: TripIntake = {};
+  if (destination) intake.destination = destination;
+  if (dayCountRaw) intake.dayCount = dayCountRaw;
+  if (startOk) intake.startDate = startOk;
+  if (endOk) intake.endDate = endOk;
+  if (budgetAmount != null) {
+    intake.budgetAmount = budgetAmount;
+    intake.budgetCurrency = draft.currency?.trim() || "JPY";
+  }
+  if (partySize != null) intake.partySize = partySize;
+
+  const hasIntake = Object.keys(intake).length > 0;
+  return {
+    startDate,
+    endDate,
+    dayCount,
+    intake: hasIntake ? intake : null,
+    agentSeedPending: hasIntake,
+  };
+}
+
 const DAY_CENTERS: Record<number, [number, number]> = {
   1: [35.68, 139.75],
   2: [35.68, 139.72],
@@ -189,22 +288,40 @@ export class Trip {
   }
 
   /** Create a fresh trip owned by the given user, who becomes its first member.
-   * Starts with a single empty day and no stops/expenses. */
+   * Starts with empty stops/expenses; day count and city come from the draft. */
   static create(draft: CreateTripDraft, owner: TripOwner): Trip {
     const title = draft.title.trim();
     if (!title) throw new DomainError("empty_trip_title", "Trip title is required");
 
     const palette = MEMBER_PALETTE[0]!;
     const tripId = `t${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const startDate = todayIso();
+    const schedule = resolveCreateSchedule(draft);
+    const destination = draft.destination?.trim() ?? "";
+    const currency = draft.currency?.trim() || "JPY";
+
+    const days: DaySnapshot[] = [];
+    for (let n = 1; n <= schedule.dayCount; n++) {
+      days.push({
+        number: n,
+        date: addDaysIso(schedule.startDate, n - 1) || schedule.startDate,
+        dateLabel: "",
+        city: n === 1 ? destination : "",
+        color: dayColorFor(n),
+      });
+    }
+
     const snapshot: TripSnapshot = {
       id: tripId,
       title,
       status: "planning",
-      currency: draft.currency?.trim() || "JPY",
+      currency,
       version: 0,
-      startDate,
+      startDate: schedule.startDate,
+      endDate: schedule.endDate,
       ownerId: owner.id,
+      coverUrl: draft.coverUrl ?? null,
+      intake: schedule.intake,
+      agentSeedPending: schedule.agentSeedPending,
       members: [
         {
           id: `m${tripId}-owner`,
@@ -220,15 +337,7 @@ export class Trip {
           isCurrentUser: true,
         },
       ],
-      days: [
-        {
-          number: 1,
-          date: startDate,
-          dateLabel: "",
-          city: "",
-          color: dayColorFor(1),
-        },
-      ],
+      days,
       stops: [],
       expenses: [],
     };
@@ -325,7 +434,11 @@ export class Trip {
       currency: source.currency,
       version: 0,
       startDate: source.startDate,
+      endDate: source.endDate,
       ownerId: owner.id,
+      coverUrl: source.coverUrl,
+      intake: source.intake,
+      agentSeedPending: false,
       members,
       days: source.days.map((d) => ({ ...d })),
       stops,
@@ -589,6 +702,11 @@ export class Trip {
     const trimmed = title.trim();
     if (!trimmed) throw new DomainError("empty_trip_title", "Trip title is required");
     this.snapshot.title = trimmed;
+  }
+
+  /** Clear the one-shot agent seed flag after the first @agent message is sent. */
+  clearAgentSeedPending(): void {
+    this.snapshot.agentSeedPending = false;
   }
 
   /** Append a new empty day at the end of the itinerary and return it. Its

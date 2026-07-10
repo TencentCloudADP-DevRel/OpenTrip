@@ -25,7 +25,7 @@ API origin. **Auth**: `public` | `session` | `session + member` | `session + edi
 | GET | `/api/trips` | session | List trip summaries for the current user |
 | POST | `/api/trips` | session | Create trip (caller becomes owner) |
 | GET | `/api/trips/:id` | session + member | Full trip DTO |
-| PATCH | `/api/trips/:id` | session + edit | Rename trip |
+| PATCH | `/api/trips/:id` | session + edit | Rename trip, or `{ clearAgentSeedPending: true }` |
 
 ### Itinerary days
 

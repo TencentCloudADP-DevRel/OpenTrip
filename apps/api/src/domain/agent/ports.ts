@@ -93,9 +93,10 @@ export interface AgentModel {
     request: Pick<AgentChatRequest, "trip" | "history">,
   ): Promise<AgentMessagePart[]>;
   /**
-   * Judge whether a plain member message is addressing the agent (explicit
-   * @agent, a question to the agent, or a clear request for help). Default
-   * false — member-to-member chatter stays silent.
+   * Judge whether a plain member message is addressing the agent. Prefer true
+   * when the prior turn was the agent and the member continues that thread
+   * (confirmations, choices, follow-up questions). Default false for
+   * human-to-human chatter.
    */
   isAddressed(request: AgentAddressedRequest): Promise<boolean>;
   /** Judge a whitelisted operation and return a structured decision. */

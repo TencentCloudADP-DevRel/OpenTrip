@@ -1,4 +1,5 @@
 import { NotFoundError } from "../domain/shared/errors";
+import type { CoverImageProvider } from "../domain/cover";
 import {
   Trip,
   type AddExpenseDraft,
@@ -27,7 +28,10 @@ export class ForbiddenError extends Error {
 /** Read-side and command use cases for the Trip aggregate. Every method takes
  * the acting user id so access and mutation permissions can be enforced. */
 export class TripService {
-  constructor(private repo: TripRepository) {}
+  constructor(
+    private repo: TripRepository,
+    private coverImages: CoverImageProvider | null = null,
+  ) {}
 
   private async load(tripId: string): Promise<Trip> {
     const trip = await this.repo.findById(tripId);
@@ -72,7 +76,12 @@ export class TripService {
   }
 
   async createTrip(draft: CreateTripDraft, owner: TripOwner): Promise<TripDto> {
-    const trip = Trip.create(draft, owner);
+    const destination = draft.destination?.trim();
+    const coverUrl =
+      destination && this.coverImages
+        ? await this.coverImages.searchLandscape(destination)
+        : null;
+    const trip = Trip.create({ ...draft, coverUrl }, owner);
     await this.repo.create(trip);
     return toTripDto(trip, owner.id);
   }
@@ -85,6 +94,19 @@ export class TripService {
     const trip = await this.loadEditable(tripId, userId);
     trip.rename(title);
     await this.repo.rename(tripId, trip.toSnapshot().title);
+    return toTripDto(trip, userId);
+  }
+
+  /** Clear the one-shot agent seed flag after the planner sends the first message. */
+  async clearAgentSeedPending(
+    tripId: string,
+    userId: string,
+  ): Promise<TripDto> {
+    const trip = await this.loadEditable(tripId, userId);
+    if (trip.toSnapshot().agentSeedPending) {
+      trip.clearAgentSeedPending();
+      await this.repo.clearAgentSeedPending(tripId);
+    }
     return toTripDto(trip, userId);
   }
 

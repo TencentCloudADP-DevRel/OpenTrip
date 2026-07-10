@@ -19,6 +19,8 @@ export interface TripSummary {
   status: TripStatus;
   currency: string;
   coverColor: string;
+  /** Optional cover image URL; null falls back to the decorative route SVG. */
+  coverUrl: string | null;
   memberCount: number;
   stopCount: number;
   /** Creation time as an ISO 8601 string, for a relative "created … ago" label. */
@@ -44,6 +46,8 @@ export interface TripRepository {
   addMember(tripId: string, member: MemberSnapshot): Promise<void>;
   /** Update the trip's base row title. */
   rename(id: string, title: string): Promise<void>;
+  /** Clear the one-shot agent seed pending flag. */
+  clearAgentSeedPending(id: string): Promise<void>;
   /** Persist a newly appended itinerary day. */
   addDay(tripId: string, day: DaySnapshot): Promise<void>;
   /** Update display metadata for an existing itinerary day. */

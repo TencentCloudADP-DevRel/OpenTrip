@@ -13,7 +13,7 @@ and the root render. No business logic. Files: `app/providers`, `app/styles`,
 Route-level compositions. A page reads routing/session data and composes
 widgets and features. Two pages:
 
-- `pages/trips` — the trips home grid.
+- `pages/trips` — the trips home grid and guided create-trip wizard.
 - `pages/invite` — the `/invite/:token` accept surface. Previews the invite
   (public), renders the auth form inline when signed out so the token survives
   sign-in, then adds the user and routes into the planner on accept.
@@ -71,7 +71,8 @@ Reusable composite blocks used by more than one page:
 - `widgets/app-sidebar` — the persistent left sidebar shared by both pages.
   Pins a brand (or a page-provided `top`, e.g. the planner's back + trip title)
   above a scrollable content slot, with the account menu docked at the bottom.
-  The trips page fills it with nav (new trip); the planner injects its itinerary.
+  The trips page opens a guided create-trip wizard from the main header (and
+  empty-state CTA); the planner injects its itinerary into the middle slot.
   It is the base layer: pages set the shell background to the sidebar color and
   float the main panel above it with rounded left corners + a left shadow. A
   collapse control sits at the sidebar's top-right; collapsing hides it and shows

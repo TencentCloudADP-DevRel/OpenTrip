@@ -25,8 +25,10 @@ import {
   type AgentFilePart,
 } from "./file-parts";
 import { buildUserMessageParts, containsAgentMention, mentionedUserIdsFromParts } from "./mentions";
+import { looksLikeAgentThreadFollowUp } from "./addressed";
 
 export { containsAgentMention } from "./mentions";
+export { looksLikeAgentThreadFollowUp } from "./addressed";
 
 /** Thrown when an apply attempt loses a race or targets a stale suggestion.
  * Mapped to HTTP 409 at the edge. */
@@ -472,11 +474,15 @@ export class AgentService {
       const history = await this.sessionRepo.listMessages(tripId, {
         limit: CHAT_CONTEXT_LIMIT,
       });
-      const addressed = await this.model.isAddressed({
-        trip: trip.toSnapshot(),
-        history,
-        messageText,
-      });
+      // Deterministic: short confirmations / follow-ups right after an agent
+      // turn continue the thread without requiring @agent.
+      const addressed =
+        looksLikeAgentThreadFollowUp(history, messageText) ||
+        (await this.model.isAddressed({
+          trip: trip.toSnapshot(),
+          history,
+          messageText,
+        }));
       if (!addressed) return;
       await this.generateAmbientReply(tripId);
     } catch (err) {

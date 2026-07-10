@@ -3,6 +3,7 @@ import type {
   ExpenseSnapshot,
   MemberSnapshot,
   StopSnapshot,
+  TripIntake,
   TripRepository,
   TripSnapshot,
   TripStatus,
@@ -10,6 +11,23 @@ import type {
 } from "../../domain/trip";
 import { Trip } from "../../domain/trip";
 import { createDialect, type SqlClient, type SqlConnection } from "./sql";
+
+/** Parse intake JSON from Postgres/MySQL drivers (object or string). */
+function parseTripIntake(raw: unknown): TripIntake | null {
+  if (raw == null) return null;
+  let value: unknown = raw;
+  if (typeof raw === "string") {
+    try {
+      value = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+  return value as TripIntake;
+}
 
 /** Dialect-agnostic Trip aggregate repository (Postgres + MySQL). */
 export class SqlTripRepository implements TripRepository {
@@ -29,6 +47,7 @@ export class SqlTripRepository implements TripRepository {
       status: string;
       currency: string;
       cover_color: string;
+      cover_url: string | null;
       owner_id: string | null;
       created_at: string | Date;
       member_count: string | number;
@@ -37,7 +56,7 @@ export class SqlTripRepository implements TripRepository {
       location_lng: string | number | null;
     }>(
       `SELECT t.id, t.title, t.start_date, t.end_date, t.status, t.currency, t.cover_color,
-              t.owner_id, t.created_at,
+              t.cover_url, t.owner_id, t.created_at,
               (SELECT count(*) FROM trip_members m WHERE m.trip_id = t.id) AS member_count,
               (SELECT count(*) FROM stops s WHERE s.trip_id = t.id) AS stop_count,
               (SELECT s.lat FROM stops s
@@ -111,6 +130,7 @@ export class SqlTripRepository implements TripRepository {
         status: r.status as TripStatus,
         currency: r.currency,
         coverColor: r.cover_color,
+        coverUrl: r.cover_url ?? null,
         memberCount: Number(r.member_count),
         stopCount: Number(r.stop_count),
         createdAt: new Date(r.created_at).toISOString(),
@@ -131,10 +151,16 @@ export class SqlTripRepository implements TripRepository {
       status: string;
       currency: string;
       start_date: string;
+      end_date: string;
+      cover_url: string | null;
+      intake: unknown;
+      agent_seed_pending: boolean | number;
       owner_id: string;
       version: number;
     }>(
-      `SELECT id, title, status, currency, start_date, owner_id, version FROM trips WHERE id = $1`,
+      `SELECT id, title, status, currency, start_date, end_date, cover_url, intake,
+              agent_seed_pending, owner_id, version
+       FROM trips WHERE id = $1`,
       [id],
     );
     const base = tripRes.rows[0];
@@ -271,6 +297,10 @@ export class SqlTripRepository implements TripRepository {
       currency: base.currency,
       version: Number(base.version),
       startDate: base.start_date ?? "",
+      endDate: base.end_date ?? "",
+      coverUrl: base.cover_url ?? null,
+      intake: parseTripIntake(base.intake),
+      agentSeedPending: Boolean(base.agent_seed_pending),
       ownerId: base.owner_id,
       members: (members.rows as Array<Record<string, unknown>>).map((m) => ({
         id: m.id as string,
@@ -305,16 +335,20 @@ export class SqlTripRepository implements TripRepository {
     try {
       await client.query("BEGIN");
       await client.query(
-        `INSERT INTO trips (id, title, start_date, end_date, status, currency, cover_color, owner_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        `INSERT INTO trips (id, title, start_date, end_date, status, currency, cover_color,
+                            cover_url, intake, agent_seed_pending, owner_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
         [
           s.id,
           s.title,
           s.startDate,
-          "",
+          s.endDate,
           s.status,
           s.currency,
           s.days[0]?.color ?? "#3f6fc9",
+          s.coverUrl,
+          s.intake ? JSON.stringify(s.intake) : null,
+          s.agentSeedPending,
           s.ownerId,
         ],
       );
@@ -390,6 +424,13 @@ export class SqlTripRepository implements TripRepository {
     await this.db.query(
       `UPDATE trips SET title = $2, version = version + 1 WHERE id = $1`,
       [id, title],
+    );
+  }
+
+  async clearAgentSeedPending(id: string): Promise<void> {
+    await this.db.query(
+      `UPDATE trips SET agent_seed_pending = $2, version = version + 1 WHERE id = $1`,
+      [id, false],
     );
   }
 

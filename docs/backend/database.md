@@ -141,8 +141,11 @@ docker compose -f deploy/docker/compose.yaml --profile mysql up -d mysql
 ## Business schema
 
 - `trips` — `id`, `title`, `start_date`, `end_date`, `status`, `currency`,
-  `owner_id`. New trips store `start_date` as an ISO `YYYY-MM-DD` date so day
-  calendar dates can be derived on the client; seed trips use descriptive labels.
+  `cover_color`, `cover_url`, `intake` (JSON), `agent_seed_pending`, `owner_id`.
+  New trips store `start_date` as an ISO `YYYY-MM-DD` date so day calendar dates
+  can be derived on the client; seed trips use descriptive labels. `cover_url`
+  is an optional Unsplash CDN URL; `intake` holds create-wizard answers;
+  `agent_seed_pending` gates the one-shot `@agent` seed on first planner open.
 - `trip_members` — `id`, `trip_id`, `name`, `short_name`, `initials`,
   `avatar_bg`, `avatar_fg`, `image`, `is_current_user`. `image` is an optional
   avatar URL.

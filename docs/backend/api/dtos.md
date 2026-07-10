@@ -32,6 +32,7 @@ Returned by `GET /api/trips`.
 | `status` | `TripStatus` | Status |
 | `currency` | string | Trip currency code |
 | `coverColor` | string | Card color |
+| `coverUrl` | string \| null | Optional Unsplash (or other) cover image URL |
 | `memberCount` | number | Members |
 | `stopCount` | number | Stops |
 | `createdAt` | string | ISO 8601 creation time |
@@ -53,12 +54,27 @@ Returned by most trip mutations and `GET /api/trips/:id`.
 | `status` | string (`TripStatus`) | Status |
 | `currency` | string | Default trip currency |
 | `startDate` | string | ISO `YYYY-MM-DD` or `""` |
+| `coverUrl` | string \| null | Optional cover image URL |
+| `intake` | `TripIntake` \| null | Create-wizard answers (TBD fields omitted) |
+| `agentSeedPending` | boolean | Planner should send one-shot `@agent` seed |
 | `members` | `MemberDto[]` | Membership |
 | `permissions` | `TripPermissions` | **Caller’s** effective rights |
 | `days` | `DayDto[]` | Itinerary days |
 | `stops` | `StopDto[]` | Flat list (use `day` + order) |
 | `expenses` | `ExpenseDto[]` | Expenses |
 | `budget` | `Budget` | Server-computed settlement |
+
+**`TripIntake`** (create wizard; omitted keys mean TBD):
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `destination` | string? | City / region label |
+| `dayCount` | number? | Planned day count |
+| `startDate` | string? | ISO start |
+| `endDate` | string? | ISO inclusive end |
+| `budgetAmount` | number? | Planned budget amount |
+| `budgetCurrency` | string? | Currency for `budgetAmount` |
+| `partySize` | number? | Planned party size (does not create members) |
 
 **`TripPermissions`:**
 

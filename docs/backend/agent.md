@@ -24,8 +24,9 @@ quiet unless asked or a change carries a material planning risk.
 
 | Trigger | Path | Behavior |
 | --- | --- | --- |
-| Explicit chat with `@agent` | `POST …/agent/chat` | Streams a reply (AI SDK UI message stream). User and assistant rows are persisted with the **same UIMessage ids** the client `useChat` buffer uses, so the panel can dedupe live vs history while streaming |
-| Plain member message | `POST …/agent/messages` | Persists the message, then asks the model whether the agent was addressed. Explicit `@agent` or an AI-judged ask triggers an ambient reply in the background (lands via polling); member-to-member chatter stays silent |
+| Explicit chat with `@agent` | `POST …/agent/chat` | Streams a reply (AI SDK UI message stream). User and assistant rows are persisted with the **same UIMessage ids** the client `useChat` buffer uses, so the panel can dedupe live vs history while streaming. Write tools are available (with approval). |
+| Agent-thread follow-up (e.g. “确认”) | `POST …/agent/chat` (client) | The web client routes short confirmations and other continuations after an assistant turn to the same streaming chat path so write tools can run. Without this, ambient replies are read-only and cannot `insertStop`. |
+| Plain member message | `POST …/agent/messages` | Persists the message, then asks whether the agent was addressed (thread follow-ups after an agent turn count; explicit `@agent` or an AI-judged ask also). Ambient reply runs in the background (lands via polling); pure member-to-member chatter stays silent. Ambient replies use **read tools only**. |
 | `@agent` or `@Member` in a stop comment | `POST …/stops/:stopId/comments` | Mirrored into the shared session with the stop as context (`source = stop_comment`). `@Member` mentions populate `mentionedUserIds` so the same client toast path as chat fires. Ambient agent reply runs **only** when `@agent` is present; the reply is written into that stop's comment thread (`author = agent`) and is **not** shown in the agent drawer |
 | Whitelisted write operation | stop insert/update/move, day update/delete/reorder, expense add/update | Recorded as an operation event, then evaluated asynchronously |
 
@@ -75,6 +76,23 @@ place or stay still uses `insertStop` (and approval). Provider selection and
 caching for geo are documented in [geo.md](./geo.md); lodging (Airbnb scrape) in
 [lodging.md](./lodging.md).
 
+### Itinerary planning workflow
+
+When a member asks the agent to create or fill a multi-day plan, the chat
+system prompt requires:
+
+1. **Research with tools** — `placeSearch` / `placeNearby` / `placeDetail` for
+   sights and food, `airbnbSearch` for lodging, `checkWeather` for dates,
+   routes when travel time matters. Do not invent POIs without tools.
+2. **Draft + ask** — present a day-by-day proposal and ask whether to write it
+   into the trip (e.g. reply “确认”). No write tools on that proposal turn.
+3. **Confirm → write** — on member confirmation, call `updateDay` /
+   `insertStop` (Stay / Sight / Food, etc.) with coords and names from tool
+   results; approval UI still gates each write.
+
+`AI_MAX_TOOL_STEPS` defaults to 16 so a multi-day plan can finish research and
+writes in one turn.
+
 ### Multimodal (AI SDK file parts)
 
 - Members can attach **PNG / JPEG / WebP / PDF / plain text** (markdown, csv)
@@ -95,10 +113,15 @@ client continues with `addToolApprovalResponse({ id, approved, reason? })` and
 `sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses`.
 `execute` calls `applyTripOp` → Trip aggregate + repository.
 
-Ambient threshold replies use **read tools only** (no approval loop). Every
-plain member message is evaluated with `isAddressed`; the agent replies only
-when it judges itself addressed (or when `@agent` is explicit). There is no
-message-count threshold.
+Ambient threshold replies use **read tools only** (no approval loop). The web
+client therefore sends agent-thread follow-ups (confirmations, short
+continuations) through `POST …/agent/chat` so write tools remain available.
+Every plain member message is still evaluated with `isAddressed` for ambient
+replies when the client uses `POST …/messages`. Continuations of an agent turn
+— short confirmations like “确认”, choices, or follow-up questions right after
+an assistant message — are treated as addressed even without `@agent`
+(deterministic heuristic first, then the model). There is no message-count
+threshold.
 
 There is no product API for deleting a stop or expense yet. Invites and votes
 stay human-only. Stop comments are human-authored except for agent replies that
@@ -154,7 +177,7 @@ disabled unless both `AI_MODEL` and `AI_API_KEY` are present.
 | `AI_BASE_URL` | OpenAI-compatible base URL; empty uses the OpenAI API | — |
 | `AI_API_KEY` | API key (required) | — |
 | `AI_PROACTIVE_THRESHOLD` | Minimum confidence for a proactive suggestion | `0.7` |
-| `AI_MAX_TOOL_STEPS` | Tool-step cap per chat generation | `5` |
+| `AI_MAX_TOOL_STEPS` | Tool-step cap per chat generation | `16` |
 
 On Cloudflare, set the same variables as Worker vars/secrets (see
 [../operations/cloudflare.md](../operations/cloudflare.md)).

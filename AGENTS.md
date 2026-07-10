@@ -55,6 +55,7 @@
 - [`docs/backend/agent.md`](docs/backend/agent.md)
 - [`docs/backend/trip-ops.md`](docs/backend/trip-ops.md) — trip mutation registry
 - [`docs/backend/weather.md`](docs/backend/weather.md) — weather proxy and cache
+- [`docs/backend/cover.md`](docs/backend/cover.md) — Unsplash trip cover on create
 - [`docs/backend/fx.md`](docs/backend/fx.md) — FX rates proxy for settle-up conversion
 - [`docs/backend/geo.md`](docs/backend/geo.md) — geo places/routes and agent tools
 - [`docs/backend/lodging.md`](docs/backend/lodging.md) — Airbnb lodging search and agent tools

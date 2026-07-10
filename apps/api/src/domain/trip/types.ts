@@ -104,11 +104,30 @@ export interface TripSnapshot {
   /** Trip start date as an ISO `YYYY-MM-DD` string, or "" when unknown.
    * Day dates are derived from this by offsetting by (day.number - 1). */
   startDate: string;
+  /** Inclusive end date as ISO `YYYY-MM-DD`, or "" when unknown. */
+  endDate: string;
   ownerId: string;
+  /** Optional Unsplash (or other) cover image URL for the trips list card. */
+  coverUrl: string | null;
+  /** Wizard answers captured at create time. Null when created without intake. */
+  intake: TripIntake | null;
+  /** When true, the planner should seed the first @agent message once. */
+  agentSeedPending: boolean;
   members: MemberSnapshot[];
   days: DaySnapshot[];
   stops: StopSnapshot[];
   expenses: ExpenseSnapshot[];
+}
+
+/** Optional create-wizard answers persisted on the trip. Omitted fields mean TBD. */
+export interface TripIntake {
+  destination?: string;
+  dayCount?: number;
+  startDate?: string;
+  endDate?: string;
+  budgetAmount?: number;
+  budgetCurrency?: string;
+  partySize?: number;
 }
 
 export interface Balance {

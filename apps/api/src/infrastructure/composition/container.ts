@@ -25,6 +25,7 @@ import { FrankfurterClient } from "../fx/frankfurter-client";
 import { createGeoProvider } from "../geo/create-geo-provider";
 import { AirbnbLodgingProvider } from "../lodging/airbnb-provider";
 import { AiSdkAgentModel } from "../ai/agent-model.ai-sdk";
+import { UnsplashCoverProvider } from "../cover/unsplash-cover-provider";
 import type { AppConfig } from "../config";
 
 export interface CreateContainerOptions {
@@ -123,7 +124,8 @@ export function createContainer(
     tripRepository,
     loadSampleTripTemplate: createSampleTripTemplateLoader(tripRepository),
   });
-  const tripService = new TripService(tripRepository);
+  const coverImages = new UnsplashCoverProvider(config.unsplashAccessKey);
+  const tripService = new TripService(tripRepository, coverImages);
   const tripInviteService = new TripInviteService(
     new SqlTripInviteRepository(pool),
     tripRepository,

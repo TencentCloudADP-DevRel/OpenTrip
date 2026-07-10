@@ -16,6 +16,7 @@ import {
 } from "@/shared/api";
 import { uploadTripMedia } from "@/shared/api/media";
 import { config, queryKeys } from "@/shared/config";
+import { looksLikeAgentThreadFollowUp } from "../lib/agentThreadFollowUp";
 
 const MENTION_PATTERN = /@agent\b/i;
 
@@ -73,9 +74,9 @@ function mediaTypeOf(file: File): string {
 /** Shared-session chat for the agent panel.
  *
  * Persisted history lives in a React Query cache (shared across members via
- * polling); `useChat` is only the streaming buffer for replies this client
- * explicitly requested with an @agent mention, including AI SDK tool-approval
- * turns. Once a stream settles and no tool is waiting on the user, the history
+ * polling); `useChat` is the streaming buffer for `@agent` turns and for
+ * thread follow-ups (e.g. “确认”) that need write tools + approval.
+ * Once a stream settles and no tool is waiting on the user, the history
  * is refetched and the buffer cleared so nothing renders twice. */
 export function useAgentChat(tripId: string, enabled: boolean) {
   const queryClient = useQueryClient();
@@ -126,9 +127,9 @@ export function useAgentChat(tripId: string, enabled: boolean) {
       });
   }, [status, liveMessages, queryClient, tripId, setMessages]);
 
-  /** Route input: @agent mentions stream a reply; plain messages land in the
-   * shared session and the server decides whether the agent was addressed
-   * (ambient replies arrive via polling). */
+  /** Route input: `@agent` and agent-thread follow-ups stream (write tools);
+   * other plain messages land in the shared session and the server decides
+   * whether the agent was addressed (ambient replies arrive via polling). */
   const send = async (text: string, files: File[] = []) => {
     const trimmed = text.trim();
     if (!trimmed && files.length === 0) return;
@@ -136,7 +137,15 @@ export function useAgentChat(tripId: string, enabled: boolean) {
     const fileParts =
       files.length > 0 ? await uploadFilesAsParts(tripId, files) : [];
 
-    if (MENTION_PATTERN.test(trimmed)) {
+    const threadForFollowUp = [
+      ...(history.data?.messages ?? []),
+      ...chat.messages,
+    ];
+    const useStream =
+      MENTION_PATTERN.test(trimmed) ||
+      looksLikeAgentThreadFollowUp(threadForFollowUp, trimmed);
+
+    if (useStream) {
       await chat.sendMessage({
         role: "user",
         parts: [

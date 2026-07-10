@@ -19,6 +19,9 @@ what to keep, and splitting shared expenses fairly.
 ## MVP scope
 
 - Trips home (read) and a fully interactive single-trip planner.
+- Guided create-trip wizard (destination, days, dates, budget, party — each
+  optional / TBD), Unsplash cover when a destination is set, and a one-shot
+  `@agent` seed message on first open.
 - Stops: list/group by day, detail panel, vote toggle, comments, inline insert.
 - Budget: expense list, add expense with payer + split, balances, settlement.
 - Email + password authentication (Better Auth).
@@ -32,11 +35,11 @@ See [handoff-implementation.md](handoff-implementation.md).
 ## Non-goals (for this iteration)
 
 - Real-time multiplayer sync (presence dots are cosmetic).
-- Trip editing wizard beyond creating a named, empty trip (dates and cover are
-  not yet wired).
 - Email delivery (verification/reset emails and invite emails are not wired to a
   provider; invites are shared as links). Members join via an invite link with a
   configurable access scope, role, can-invite flag, and custom expiry.
 - Multi-currency conversion for expense storage and balances (amounts remain in
   the trip currency; balances and settle-up can *display* amounts in another
   currency via the FX proxy — see [../backend/fx.md](../backend/fx.md)).
+- Downloading Unsplash images into trip media storage (covers use CDN URLs).
+- Pre-creating members from party size or expenses from planned budget.

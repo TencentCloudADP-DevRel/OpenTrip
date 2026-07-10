@@ -9,6 +9,12 @@ export function fetchTrips(): Promise<TripSummary[]> {
 export interface CreateTripInput {
   title: string;
   currency?: string;
+  startDate?: string;
+  endDate?: string;
+  dayCount?: number;
+  destination?: string;
+  budgetAmount?: number;
+  partySize?: number;
 }
 
 export function createTrip(input: CreateTripInput): Promise<Trip> {
@@ -22,6 +28,14 @@ export function renameTrip(tripId: string, title: string): Promise<Trip> {
   return apiFetch<Trip>(`/api/trips/${tripId}`, {
     method: "PATCH",
     body: JSON.stringify({ title }),
+  });
+}
+
+/** Acknowledge that the planner has sent the one-shot @agent seed message. */
+export function clearAgentSeedPending(tripId: string): Promise<Trip> {
+  return apiFetch<Trip>(`/api/trips/${tripId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ clearAgentSeedPending: true }),
   });
 }
 

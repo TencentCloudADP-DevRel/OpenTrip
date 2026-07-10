@@ -94,6 +94,8 @@ export interface AppConfig {
     lodging: LodgingConfig;
     /** Trip agent model configuration. Null disables the agent entirely. */
     ai: AiConfig | null;
+    /** Unsplash access key for trip cover search. Undefined disables covers. */
+    unsplashAccessKey: string | undefined;
 }
 
 interface StorageConfigBase {
@@ -169,6 +171,7 @@ export interface RawEnv {
     LODGING_DISABLE_GEOCODING?: string;
     LODGING_TIMEOUT_MS?: string;
     LODGING_GEOCODE_USER_AGENT?: string;
+    UNSPLASH_ACCESS_KEY?: string;
 }
 
 const CAPTCHA_PROVIDERS: CaptchaProvider[] = [
@@ -249,6 +252,7 @@ export function loadConfig(env: RawEnv, connectionString?: string): AppConfig {
         geo: parseGeoConfig(env),
         lodging: parseLodgingConfig(env),
         ai: parseAiConfig(env),
+        unsplashAccessKey: env.UNSPLASH_ACCESS_KEY?.trim() || undefined,
     };
 }
 
@@ -370,7 +374,7 @@ function parseAiConfig(env: RawEnv): AiConfig | null {
             "AI_PROACTIVE_THRESHOLD",
             0.7,
         ),
-        maxToolSteps: parseNumber(env.AI_MAX_TOOL_STEPS, "AI_MAX_TOOL_STEPS", 5),
+        maxToolSteps: parseNumber(env.AI_MAX_TOOL_STEPS, "AI_MAX_TOOL_STEPS", 16),
     };
 }
 

@@ -79,5 +79,20 @@
     "appliedByOther": "{{name}} 批准了一条助手建议",
     "stale": "建议已过期——行程已发生变化",
     "applyError": "无法批准该建议"
+  },
+  "seed": {
+    "message": "@agent 帮我创建一个行程：{{details}}。",
+    "joiner": "，",
+    "part": {
+      "destination": "目的地{{destination}}",
+      "days_one": "共{{count}}天",
+      "days_other": "共{{count}}天",
+      "dates": "{{start}}至{{end}}",
+      "start": "从{{start}}开始",
+      "budget": "预算{{amount}}",
+      "budgetWithCurrency": "预算{{amount}} {{currency}}",
+      "party_one": "{{count}}人",
+      "party_other": "{{count}}人"
+    }
   }
 }

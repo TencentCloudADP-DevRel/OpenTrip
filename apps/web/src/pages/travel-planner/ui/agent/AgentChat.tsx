@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import type { UIMessage } from "ai";
 import type { Trip } from "@/entities/trip";
-import type { AgentSuggestion } from "@/shared/api";
+import { clearAgentSeedPending, type AgentSuggestion } from "@/shared/api";
+import { queryKeys } from "@/shared/config";
 import { Spinner } from "@/shared/ui/spinner";
 import { useAgentChat } from "../../model/useAgentChat";
+import { buildAgentSeedMessage } from "../../lib/buildAgentSeedMessage";
 import { type QuoteTarget } from "../quote";
 import { AgentComposer } from "./AgentComposer";
 import {
@@ -12,6 +15,10 @@ import {
   textFromParts,
   type AgentDisplayMessage,
 } from "./AgentMessage";
+
+function seedGuardKey(tripId: string): string {
+  return `wf.agentSeed.${tripId}`;
+}
 
 /** Message list + sticky input for the shared trip session. */
 export function AgentChat({
@@ -33,6 +40,7 @@ export function AgentChat({
   onDenySuggestion: (suggestion: AgentSuggestion) => void;
 }) {
   const { t } = useTranslation("agent");
+  const queryClient = useQueryClient();
   const {
     history,
     historyPending,
@@ -43,6 +51,7 @@ export function AgentChat({
   } = useAgentChat(tripId, enabled);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [quote, setQuote] = useState<QuoteTarget | null>(null);
+  const seedingRef = useRef(false);
 
   const persisted: AgentDisplayMessage[] = (history?.messages ?? []).map((m) => ({
     id: m.id,
@@ -88,6 +97,45 @@ export function AgentChat({
       .filter((s) => s.messageId)
       .map((s) => [s.messageId!, s] as const),
   );
+
+  // One-shot wizard seed: open panel + empty history + pending flag.
+  useEffect(() => {
+    if (!enabled || historyPending || seedingRef.current) return;
+    if (!trip.agentSeedPending) return;
+    if (messages.length > 0) return;
+
+    const text = buildAgentSeedMessage(t, trip.intake);
+    if (!text) return;
+
+    if (typeof sessionStorage !== "undefined") {
+      if (sessionStorage.getItem(seedGuardKey(tripId))) return;
+      sessionStorage.setItem(seedGuardKey(tripId), "1");
+    }
+    seedingRef.current = true;
+
+    void (async () => {
+      try {
+        await send(text, []);
+        const updated = await clearAgentSeedPending(tripId);
+        queryClient.setQueryData(queryKeys.trip(tripId), updated);
+      } catch {
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.removeItem(seedGuardKey(tripId));
+        }
+        seedingRef.current = false;
+      }
+    })();
+  }, [
+    enabled,
+    historyPending,
+    messages.length,
+    queryClient,
+    send,
+    t,
+    trip.agentSeedPending,
+    trip.intake,
+    tripId,
+  ]);
 
   // Follow both new messages and in-place part growth during streaming
   // (text deltas and DeepSeek reasoning deltas).

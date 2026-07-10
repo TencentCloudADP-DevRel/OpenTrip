@@ -227,23 +227,26 @@ model trip_members {
 }
 
 model trips {
-  id                String              @id
-  title             String
-  start_date        String
-  end_date          String
-  status            String
-  currency          String              @default("JPY")
-  cover_color       String              @default("#3f6fc9")
-  owner_id          String?
-  created_at        DateTime            @default(now()) @db.Timestamptz(6)
-  version           Int                 @default(0)
-  agent_messages    agent_messages[]
-  agent_suggestions agent_suggestions[]
-  expenses          expenses[]
-  stops             stops[]
-  trip_days         trip_days[]
-  trip_invites      trip_invites[]
-  trip_members      trip_members[]
+  id                 String              @id
+  title              String
+  start_date         String
+  end_date           String
+  status             String
+  currency           String              @default("JPY")
+  cover_color        String              @default("#3f6fc9")
+  owner_id           String?
+  created_at         DateTime            @default(now()) @db.Timestamptz(6)
+  version            Int                 @default(0)
+  agent_seed_pending Boolean             @default(false)
+  cover_url          String?
+  intake             Json?
+  agent_messages     agent_messages[]
+  agent_suggestions  agent_suggestions[]
+  expenses           expenses[]
+  stops              stops[]
+  trip_days          trip_days[]
+  trip_invites       trip_invites[]
+  trip_members       trip_members[]
 }
 
 model user {

@@ -61,6 +61,7 @@ wrapper only.
 - [trip-ops.md](trip-ops.md) — trip-scoped mutation registry (shared HTTP + agent tools).
 - [agent.md](agent.md) — trip agent session, tools, and approval.
 - [weather.md](weather.md) — internal weather service, cache, and agent tool boundary.
+- [cover.md](cover.md) — Unsplash trip cover search on create.
 - [fx.md](fx.md) — internal FX rates service for settle-up display conversion.
 - [geo.md](geo.md) — internal geo service (OSM/Google), cache, and agent read tools.
 - [lodging.md](lodging.md) — Airbnb lodging search (openbnb-style), agent read tools.

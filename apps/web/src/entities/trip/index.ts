@@ -1,5 +1,6 @@
 export type {
   Trip,
+  TripIntake,
   TripPermissions,
   TripSummary,
   TripSummaryMember,

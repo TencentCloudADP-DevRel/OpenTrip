@@ -12,7 +12,6 @@ import {
   expenseDraftSchema,
   insertStopSchema,
   moveStopBodySchema,
-  renameTripSchema,
   reorderDaysSchema,
   updateDaySchema,
   updateStopChangesSchema,
@@ -50,7 +49,28 @@ const mobileOAuthExchangeSchema = z.object({
 const createTripSchema = z.object({
   title: z.string().trim().min(1).max(120),
   currency: z.string().trim().min(1).max(8).optional(),
+  startDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  endDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  dayCount: z.number().int().min(1).max(60).optional(),
+  destination: z.string().trim().min(1).max(120).optional(),
+  budgetAmount: z.number().positive().max(1_000_000_000).optional(),
+  partySize: z.number().int().min(1).max(100).optional(),
 });
+
+const patchTripSchema = z
+  .object({
+    title: z.string().trim().min(1).max(120).optional(),
+    clearAgentSeedPending: z.literal(true).optional(),
+  })
+  .refine((v) => v.title != null || v.clearAgentSeedPending === true, {
+    message: "title or clearAgentSeedPending is required",
+  });
 
 const createInviteSchema = z
   .object({
@@ -365,11 +385,13 @@ export function createApp(container: Container) {
   );
 
   guard.patch("/trips/:id", async (c) => {
-    const { title } = renameTripSchema.parse(await c.req.json());
-    return ok(
-      c,
-      await tripService.renameTrip(c.req.param("id"), title, c.get("user")!.id),
-    );
+    const body = patchTripSchema.parse(await c.req.json());
+    const userId = c.get("user")!.id;
+    const tripId = c.req.param("id");
+    if (body.clearAgentSeedPending) {
+      return ok(c, await tripService.clearAgentSeedPending(tripId, userId));
+    }
+    return ok(c, await tripService.renameTrip(tripId, body.title!, userId));
   });
 
   guard.post("/trips/:id/days", async (c) =>

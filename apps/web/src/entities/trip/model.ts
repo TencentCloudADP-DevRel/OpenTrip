@@ -32,6 +32,8 @@ export interface TripSummary {
   status: TripStatus;
   currency: string;
   coverColor: string;
+  /** Optional cover image URL; null falls back to the decorative route SVG. */
+  coverUrl: string | null;
   memberCount: number;
   stopCount: number;
   /** Creation time as an ISO 8601 string. */
@@ -51,6 +53,17 @@ export interface TripPermissions {
   canInvite: boolean;
 }
 
+/** Wizard answers captured at create time. Omitted fields mean TBD. */
+export interface TripIntake {
+  destination?: string;
+  dayCount?: number;
+  startDate?: string;
+  endDate?: string;
+  budgetAmount?: number;
+  budgetCurrency?: string;
+  partySize?: number;
+}
+
 export interface Trip {
   id: string;
   title: string;
@@ -59,6 +72,9 @@ export interface Trip {
   /** ISO `YYYY-MM-DD` start date, or "" when unknown. Day calendar dates are
    * derived from this by offsetting each day by (number - 1). */
   startDate: string;
+  coverUrl: string | null;
+  intake: TripIntake | null;
+  agentSeedPending: boolean;
   members: TripMember[];
   permissions: TripPermissions;
   days: TripDay[];

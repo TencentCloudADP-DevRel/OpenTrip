@@ -46,6 +46,7 @@ function baseConfig(googleOAuth: AppConfig["googleOAuth"]): AppConfig {
       geocodeUserAgent: "OpenTrip-test",
     },
     ai: null,
+    unsplashAccessKey: undefined,
   };
 }
 

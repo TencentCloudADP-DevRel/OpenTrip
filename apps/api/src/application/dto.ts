@@ -8,6 +8,12 @@ export interface TripDto {
   currency: string;
   /** ISO `YYYY-MM-DD` start date, or "" when unknown. */
   startDate: string;
+  /** Optional cover image URL for the trips list card. */
+  coverUrl: string | null;
+  /** Wizard answers captured at create time. */
+  intake: TripSnapshot["intake"];
+  /** When true, the planner should seed the first @agent message once. */
+  agentSeedPending: boolean;
   members: TripSnapshot["members"];
   /** The requesting user's effective permissions on this trip. */
   permissions: TripPermissions;
@@ -58,6 +64,9 @@ export function toTripDto(trip: Trip, currentUserId: string): TripDto {
     status: s.status,
     currency: s.currency,
     startDate: s.startDate,
+    coverUrl: s.coverUrl,
+    intake: s.intake,
+    agentSeedPending: s.agentSeedPending,
     members,
     permissions: trip.permissionsFor(currentUserId),
     days: s.days,

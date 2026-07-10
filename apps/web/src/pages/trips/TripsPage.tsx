@@ -1,77 +1,50 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createTrip, fetchTrips } from "@/shared/api";
+import { useQuery } from "@tanstack/react-query";
+import { PlusIcon } from "lucide-react";
+import { fetchTrips } from "@/shared/api";
 import { queryKeys } from "@/shared/config";
 import { AppSidebar } from "@/widgets/app-sidebar";
+import { Button } from "@/shared/ui/button";
 import { Spinner } from "@/shared/ui/spinner";
 import { useRouter } from "@/app/router";
 import { TripCard } from "./ui/TripCard";
-
-/** Placeholder title for an instantly-created trip. Users rename it later. */
-function defaultTripName(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `new-${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
-}
+import { CreateTripWizardDialog } from "./ui/CreateTripWizardDialog";
 
 export function TripsPage() {
   const { t } = useTranslation("trips");
   const { navigate } = useRouter();
-  const queryClient = useQueryClient();
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: queryKeys.trips,
     queryFn: fetchTrips,
   });
 
-  const create = useMutation({
-    mutationFn: () => createTrip({ title: defaultTripName() }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.trips });
-    },
-  });
-
-  const creating = create.isPending;
-
   return (
     <div className="flex h-dvh bg-sidebar">
-      <AppSidebar>
-        <nav className="flex flex-col px-2.5 pt-1">
-          <button
-            type="button"
-            onClick={() => create.mutate()}
-            disabled={creating}
-            className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-semibold transition-colors duration-100 hover:bg-accent disabled:opacity-50"
-          >
-            {creating ? (
-              <Spinner className="size-4 text-corn-600" />
-            ) : (
-              <svg
-                viewBox="0 0 24 24"
-                className="size-4 text-corn-600"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M12 5v14" />
-                <path d="M5 12h14" />
-              </svg>
-            )}
-            {t("newTrip")}
-          </button>
-        </nav>
-      </AppSidebar>
+      <AppSidebar />
 
       <main className="min-w-0 flex-1 overflow-y-auto rounded-l-2xl border border-r-0 border-border bg-background shadow-[-8px_0_24px_-16px_rgba(15,23,42,0.25)]">
         <div className="mx-auto w-full max-w-5xl px-4 py-8 md:px-6 md:py-12">
-          <div className="mb-8 flex flex-col gap-1">
-            <h1 className="text-3xl font-semibold tracking-[-0.02em]">
-              {t("title")}
-            </h1>
-            <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+          <div className="mb-8 flex items-start justify-between gap-4">
+            <div className="flex min-w-0 flex-col gap-1">
+              <h1 className="text-3xl font-semibold tracking-[-0.02em] text-balance">
+                {t("title")}
+              </h1>
+              <p className="text-sm text-pretty text-muted-foreground">
+                {t("subtitle")}
+              </p>
+            </div>
+            <Button
+              variant="brand"
+              size="md"
+              onClick={() => setWizardOpen(true)}
+              className="shrink-0"
+            >
+              <PlusIcon className="size-4" aria-hidden="true" />
+              {t("newTrip")}
+            </Button>
           </div>
 
           {isPending ? (
@@ -80,11 +53,10 @@ export function TripsPage() {
             </div>
           ) : isError ? (
             <ErrorState onRetry={() => void refetch()} />
-          ) : data.length === 0 && !creating ? (
-            <EmptyState onCreate={() => create.mutate()} />
+          ) : data.length === 0 ? (
+            <EmptyState onCreate={() => setWizardOpen(true)} />
           ) : (
             <div className="wf-enter-stagger grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {creating && <SkeletonCard />}
               {data.map((trip) => (
                 <TripCard
                   key={trip.id}
@@ -96,6 +68,8 @@ export function TripsPage() {
           )}
         </div>
       </main>
+
+      <CreateTripWizardDialog open={wizardOpen} onOpenChange={setWizardOpen} />
     </div>
   );
 }
@@ -123,20 +97,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
             className="wf-enter group flex w-full items-center gap-3 rounded-xl bg-card/85 px-3.5 py-3 text-left shadow-[var(--shadow-border)] backdrop-blur-md transition-[background-color,color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:shadow-[var(--shadow-border-hover)] active:scale-[var(--press-scale)]"
           >
             <span className="flex size-10 flex-none items-center justify-center rounded-lg bg-accent text-corn-600 transition-[background-color] group-hover:bg-brand-muted">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M12 5v14" />
-                <path d="M5 12h14" />
-              </svg>
+              <PlusIcon className="size-5" aria-hidden="true" />
             </span>
             <span className="flex min-w-0 flex-col">
               <span className="text-sm font-semibold">{t("newTrip")}</span>
@@ -168,12 +129,12 @@ function SkeletonCard() {
 function ErrorState({ onRetry }: { onRetry: () => void }) {
   const { t } = useTranslation("common");
   return (
-    <div className="flex flex-col items-center gap-3 py-16">
+    <div className="flex flex-col gap-3 items-center py-16">
       <p className="text-sm text-pretty text-muted-foreground">{t("state.error")}</p>
       <button
         type="button"
         onClick={onRetry}
-        className="inline-flex min-h-10 items-center justify-center text-sm text-corn-600 transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:underline active:scale-[var(--press-scale)]"
+        className="inline-flex min-h-10 items-center justify-center px-2 text-sm text-corn-600 transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:underline active:scale-[var(--press-scale)]"
       >
         {t("state.retry")}
       </button>

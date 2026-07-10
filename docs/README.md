@@ -37,6 +37,7 @@ Start here for multi-client development:
 - [backend/agent.md](backend/agent.md)
 - [backend/trip-ops.md](backend/trip-ops.md) — trip mutation registry (HTTP + agent)
 - [backend/weather.md](backend/weather.md) — weather proxy, cache, agent tool
+- [backend/cover.md](backend/cover.md) — Unsplash trip cover on create
 - [backend/fx.md](backend/fx.md) — FX rates proxy for settle-up conversion
 - [backend/geo.md](backend/geo.md) — geo places/routes (OSM/Google), agent tools
 - [backend/lodging.md](backend/lodging.md) — Airbnb lodging search, agent tools

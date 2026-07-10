@@ -185,6 +185,13 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
     [agentPanelMutation],
   );
 
+  // Open the agent panel once when a create-wizard seed is waiting.
+  useEffect(() => {
+    if (!agentEnabled || !trip?.agentSeedPending) return;
+    if (!agentCollapsed) return;
+    setAgentPanel(false);
+  }, [agentEnabled, trip?.agentSeedPending, trip?.id, agentCollapsed, setAgentPanel]);
+
   // Only poll when the trip is readable; non-members get 404 and should not
   // hammer /agent/events (same existence-hiding 404 as getTrip).
   const { suggestions: agentSuggestions, newMessages } = useAgentEvents(

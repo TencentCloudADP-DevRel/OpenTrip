@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TripSummary } from "@/entities/trip";
 import { Badge } from "@/shared/ui/badge";
@@ -66,11 +67,13 @@ export function TripCard({
   onOpen: () => void;
 }) {
   const { t } = useTranslation("trips");
+  const [coverFailed, setCoverFailed] = useState(false);
 
   const shown = trip.members.slice(0, MAX_AVATARS);
   const overflow = trip.members.length - shown.length;
   const route = routeMapForTrip(trip);
   const routeColor = trip.status === "active" ? trip.coverColor : "var(--ink-400)";
+  const showCover = Boolean(trip.coverUrl) && !coverFailed;
 
   const meta = [
     trip.startLabel && trip.endLabel
@@ -96,32 +99,44 @@ export function TripCard({
       }}
     >
       <div className="relative h-[116px] bg-ink-150">
-        <svg
-          viewBox="0 0 320 116"
-          className="absolute inset-0 size-full"
-        >
-          {route.path && (
-            <path
-              d={route.path}
-              fill="none"
-              stroke={routeColor}
-              strokeWidth="2"
-              strokeDasharray="5 4"
-              strokeLinecap="round"
-            />
-          )}
-          {route.points.map((p, i) => (
-            <circle
-              key={i}
-              cx={p.x}
-              cy={p.y}
-              r="5"
-              fill={routeColor}
-              stroke="white"
-              strokeWidth="2"
-            />
-          ))}
-        </svg>
+        {showCover ? (
+          <img
+            src={trip.coverUrl!}
+            alt={t("card.coverAlt", { title: trip.title })}
+            className="absolute inset-0 size-full object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
+            loading="lazy"
+            decoding="async"
+            onError={() => setCoverFailed(true)}
+          />
+        ) : (
+          <svg
+            viewBox="0 0 320 116"
+            className="absolute inset-0 size-full"
+            aria-hidden="true"
+          >
+            {route.path && (
+              <path
+                d={route.path}
+                fill="none"
+                stroke={routeColor}
+                strokeWidth="2"
+                strokeDasharray="5 4"
+                strokeLinecap="round"
+              />
+            )}
+            {route.points.map((p, i) => (
+              <circle
+                key={i}
+                cx={p.x}
+                cy={p.y}
+                r="5"
+                fill={routeColor}
+                stroke="white"
+                strokeWidth="2"
+              />
+            ))}
+          </svg>
+        )}
       </div>
       <div className="flex flex-col gap-2.5 p-3.5 px-4 pb-4">
         <div className="flex items-start justify-between gap-2">

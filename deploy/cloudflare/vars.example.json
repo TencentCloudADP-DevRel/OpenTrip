@@ -14,7 +14,7 @@
   "AI_MODEL": "<model id>",
   "AI_BASE_URL": "<provider base URL>",
   "AI_PROACTIVE_THRESHOLD": "0.7",
-  "AI_MAX_TOOL_STEPS": "5",
+  "AI_MAX_TOOL_STEPS": "16",
   "GEO_PROVIDER": "osm",
   "GEO_OSM_USER_AGENT": "OpenTrip/0.1 (https://opentrip.im; geo-agent)",
   "EMAIL_PROVIDER": "resend",
