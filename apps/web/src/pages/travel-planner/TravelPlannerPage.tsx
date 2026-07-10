@@ -388,6 +388,15 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
     }
   };
 
+  // Must stay above pending/error early returns — otherwise trip load adds a
+  // hook and React throws #310 ("Rendered more hooks than during the previous render").
+  useEffect(() => {
+    if (!trip || !noteEditingStopId) return;
+    if (!trip.stops.some((s) => s.id === noteEditingStopId)) {
+      setNoteEditingStopId(null);
+    }
+  }, [noteEditingStopId, trip]);
+
   if (isPending) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-background">
@@ -428,12 +437,6 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
   const noteEditingStop = noteEditingStopId
     ? trip.stops.find((s) => s.id === noteEditingStopId)
     : undefined;
-
-  useEffect(() => {
-    if (noteEditingStopId && !trip.stops.some((s) => s.id === noteEditingStopId)) {
-      setNoteEditingStopId(null);
-    }
-  }, [noteEditingStopId, trip.stops]);
 
   const openNoteEditor = (stopId: string) => {
     setSelectedStopId(stopId);
