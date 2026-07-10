@@ -152,18 +152,34 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
   });
   const agentEnabled = agentStatus?.enabled ?? false;
 
-  const [agentCollapsed, setAgentCollapsed] = useState(true);
-  useEffect(() => {
-    if (preferences) setAgentCollapsed(preferences.agentPanelCollapsed);
-  }, [preferences]);
-
+  // Prefer React Query cache as the single source of truth. A separate
+  // useState + useEffect(preferences) race: open → optimistic false → late
+  // GET /preferences with stale true re-collapses the panel immediately.
+  const agentCollapsed = preferences?.agentPanelCollapsed ?? true;
   const agentPanelMutation = useMutation({
     mutationFn: updateAgentPanelPreference,
+    onMutate: async (collapsed) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.preferences });
+      const previous = queryClient.getQueryData<
+        Awaited<ReturnType<typeof fetchPreferences>>
+      >(queryKeys.preferences);
+      if (previous) {
+        queryClient.setQueryData(queryKeys.preferences, {
+          ...previous,
+          agentPanelCollapsed: collapsed,
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, _collapsed, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.preferences, context.previous);
+      }
+    },
     onSuccess: (data) => queryClient.setQueryData(queryKeys.preferences, data),
   });
   const setAgentPanel = useCallback(
     (collapsed: boolean) => {
-      setAgentCollapsed(collapsed);
       agentPanelMutation.mutate(collapsed);
     },
     [agentPanelMutation],
