@@ -23,7 +23,9 @@
     "state": {
         "loading": "Loading…",
         "error": "Something went wrong.",
-        "retry": "Try again"
+        "retry": "Try again",
+        "tripUnavailable": "This trip is not available.",
+        "tripUnavailableHint": "It may have been removed, or you need an invite link from a member to join."
     },
     "settings": {
         "userMenu": {

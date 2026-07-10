@@ -46,10 +46,10 @@ are set. The redirect URI registered in Google Cloud Console must be
 `{BASE_URL}/api/auth/callback/google` (API origin — Google posts the code here).
 
 After Better Auth finishes the callback, it redirects the browser to the
-**SPA** `callbackURL` from `signIn.social`. The web client must pass
-`callbackURL: window.location.origin + "/"` (see `AuthForm`). If omitted,
-Better Auth defaults to API `baseURL` and the user lands on `api.*` instead of
-the frontend.
+**SPA** `callbackURL` from `signIn.social`. The web client must pass the
+current SPA location (`origin + pathname + search`, see `AuthForm`) so invite
+pages (`/invite/:token`) resume after Google sign-in. If omitted, Better Auth
+defaults to API `baseURL` and the user lands on `api.*` instead of the frontend.
 
 Google profiles are normalized through the shared `OAuthProfileDto`
 (`apps/api/src/application/user/oauth-profile.ts`) so future OAuth providers

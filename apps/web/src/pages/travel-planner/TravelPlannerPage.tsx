@@ -169,9 +169,11 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
     [agentPanelMutation],
   );
 
+  // Only poll when the trip is readable; non-members get 404 and should not
+  // hammer /agent/events (same existence-hiding 404 as getTrip).
   const { suggestions: agentSuggestions, newMessages } = useAgentEvents(
     tripId,
-    agentEnabled,
+    agentEnabled && Boolean(trip),
   );
   const pendingSuggestions = useMemo(
     () => agentSuggestions.filter((s) => s.status === "pending"),
@@ -406,18 +408,34 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
   }
 
   if (isError || !trip) {
+    // Non-members get the same 404 as missing trips (no existence leak).
+    // Direct /trips/:id links without joining via /invite/:token hit this.
     return (
       <div className="flex h-dvh bg-sidebar">
         <AppSidebar top={<BackButton onBack={() => navigate("/")} />} />
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-l-2xl border border-r-0 border-border bg-background">
-          <p className="text-sm text-pretty text-muted-foreground">{tc("state.error")}</p>
-          <button
-            type="button"
-            onClick={() => void refetch()}
-            className="inline-flex h-10 items-center justify-center px-2 text-sm text-corn-600 transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:underline active:scale-[var(--press-scale)]"
-          >
-            {tc("state.retry")}
-          </button>
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-l-2xl border border-r-0 border-border bg-background px-6 text-center">
+          <p className="text-sm font-medium text-pretty text-foreground">
+            {tc("state.tripUnavailable")}
+          </p>
+          <p className="max-w-sm text-sm text-pretty text-muted-foreground">
+            {tc("state.tripUnavailableHint")}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="inline-flex h-10 items-center justify-center px-2 text-sm text-corn-600 transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:underline active:scale-[var(--press-scale)]"
+            >
+              {tc("actions.back")}
+            </button>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="inline-flex h-10 items-center justify-center px-2 text-sm text-muted-foreground transition-[color,scale] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:underline active:scale-[var(--press-scale)]"
+            >
+              {tc("state.retry")}
+            </button>
+          </div>
         </div>
       </div>
     );

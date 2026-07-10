@@ -97,9 +97,10 @@ export function AuthForm() {
         setPending(true);
         try {
             // Better Auth defaults callbackURL to the API baseURL when omitted,
-            // so Google would return users to api.opentrip.im (404). Always send
-            // them back to this SPA origin after /api/auth/callback/google.
-            const returnTo = `${window.location.origin}/`;
+            // so Google would return users to api.opentrip.im (404). Preserve
+            // the current SPA path (e.g. /invite/:token) so invite accept
+            // continues after OAuth instead of dropping the user on "/".
+            const returnTo = `${window.location.origin}${window.location.pathname}${window.location.search}`;
             const result = await signIn.social({
                 provider: "google",
                 callbackURL: returnTo,

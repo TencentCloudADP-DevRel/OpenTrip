@@ -23,7 +23,9 @@
     "state": {
         "loading": "加载中…",
         "error": "出错了。",
-        "retry": "重试"
+        "retry": "重试",
+        "tripUnavailable": "无法打开此行程。",
+        "tripUnavailableHint": "行程可能已删除，或者你需要成员发出的邀请链接才能加入。"
     },
     "settings": {
         "userMenu": {
