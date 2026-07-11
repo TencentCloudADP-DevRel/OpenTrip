@@ -30,7 +30,7 @@ On Cloudflare Workers, prefer either:
    fails — e.g. some managed MySQL SSL modes), plus vars `DATABASE_PROVIDER`
    and optional `DATABASE_SSL` (`required` | `off` | `verify`), or
 2. **Hyperdrive bindings** `HYPERDRIVE` (query cache) and optional
-   `HYPERDRIVE_CACHE_DISABLED` (auth + agent fresh reads). Worker uses
+   `HYPERDRIVE_CACHE_DISABLED` (consistency-critical business reads). Worker uses
    Hyperdrive when present, otherwise `DATABASE_URL`.
 
 ## Runtime architecture

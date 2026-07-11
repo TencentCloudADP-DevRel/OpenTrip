@@ -240,3 +240,15 @@ export function toTripSummary(
     location: located ? { lat: located.lat, lng: located.lng } : null,
   };
 }
+
+/** Immutably insert or replace a mutation echo in the trips read model. */
+export function upsertTripSummary(
+  previous: readonly TripSummary[] | undefined,
+  trip: Trip,
+): TripSummary[] | undefined {
+  if (!previous) return previous;
+  const existing = previous.find((row) => row.id === trip.id);
+  const summary = toTripSummary(trip, existing?.createdAt);
+  if (!existing) return [summary, ...previous];
+  return previous.map((row) => (row.id === trip.id ? summary : row));
+}

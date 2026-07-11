@@ -97,7 +97,9 @@ describe("TripInviteService", () => {
     expect(created.token).toBeTruthy();
 
     const result = await service.acceptInvite(created.token, GUEST);
-    expect(result).toEqual({ tripId: trip.id, joined: true });
+    expect(result.joined).toBe(true);
+    expect(result.trip.id).toBe(trip.id);
+    expect(result.trip.permissions.isMember).toBe(true);
     expect(trip.permissionsFor("guest")).toEqual({
       isMember: true,
       canEdit: false,
@@ -181,7 +183,8 @@ describe("TripInviteService", () => {
     });
     await service.acceptInvite(created.token, GUEST);
     const second = await service.acceptInvite(created.token, GUEST);
-    expect(second).toEqual({ tripId: trip.id, joined: false });
+    expect(second.joined).toBe(false);
+    expect(second.trip.id).toBe(trip.id);
     expect(trip.toSnapshot().members.filter((m) => m.userId === "guest")).toHaveLength(1);
   });
 

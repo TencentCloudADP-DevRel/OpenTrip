@@ -55,11 +55,12 @@ node deploy/cloudflare/scripts/set-hyperdrive.mjs <cached-id>
 
 | Binding | Client | Used by |
 | --- | --- | --- |
-| `HYPERDRIVE` | cached `pool` | Trip, invites, preferences, … |
-| `HYPERDRIVE_CACHE_DISABLED` | `poolFresh` | Better Auth, `SqlAgentSessionRepository` |
+| `HYPERDRIVE` | cached `pool` | Explicitly stale-tolerant read models only |
+| `HYPERDRIVE_CACHE_DISABLED` | `poolFresh` | Trip, permissions, invites, preferences, auth, agent sessions |
 
-If `HYPERDRIVE_CACHE_DISABLED` is missing, `poolFresh` falls back to the same
-connection string as `HYPERDRIVE` (local / single-binding deploys still work).
+If cached `HYPERDRIVE` is configured without `HYPERDRIVE_CACHE_DISABLED`, the
+Worker returns 503. Direct-database local/test environments still share one
+connection because no query-result cache is present.
 `nodejs_compat_v2` is required for `pg`.
 
 Account for total origin connections across both Hyperdrive configs when

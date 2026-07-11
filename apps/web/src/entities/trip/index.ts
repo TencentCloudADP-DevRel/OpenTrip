@@ -20,5 +20,6 @@ export {
   parseHm,
   stopDateTime,
   toTripSummary,
+  upsertTripSummary,
   type MoveTripStopInput,
 } from "./lib";

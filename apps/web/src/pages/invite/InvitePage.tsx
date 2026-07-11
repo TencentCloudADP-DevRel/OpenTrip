@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AuthForm } from "@/features/auth";
 import { useSession } from "@/shared/auth";
 import { useRouter } from "@/app/router";
@@ -9,6 +9,8 @@ import {
   ApiError,
   type InvitePreview,
 } from "@/shared/api";
+import { upsertTripSummary, type TripSummary } from "@/entities/trip";
+import { queryKeys } from "@/shared/config";
 import { LanguageSwitch } from "@/shared/i18n/LanguageSwitch";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -100,16 +102,18 @@ function AcceptCard({
 }) {
   const { t } = useTranslation("invite");
   const { navigate } = useRouter();
-
-  const openTrip = (tripId: string) => {
-    // Do not invalidate GET /api/trips — Hyperdrive may omit the newly joined
-    // trip for ~60s. Detail navigation uses GET /trips/:id which still works.
-    navigate(`/trips/${tripId}`);
-  };
+  const queryClient = useQueryClient();
 
   const accept = useMutation({
     mutationFn: () => acceptTripInvite(token),
-    onSuccess: (result) => openTrip(result.tripId),
+    onSuccess: ({ trip }) => {
+      void queryClient.cancelQueries({ queryKey: queryKeys.trip(trip.id) });
+      queryClient.setQueryData(queryKeys.trip(trip.id), trip);
+      queryClient.setQueryData<TripSummary[]>(queryKeys.trips, (previous) =>
+        upsertTripSummary(previous, trip),
+      );
+      navigate(`/trips/${trip.id}`);
+    },
     onError: (err) => {
       toastManager.add({
         title: t("accept.errorTitle"),
@@ -172,7 +176,11 @@ function AcceptCard({
           <p className="text-sm text-muted-foreground">
             {t("accept.alreadyMember")}
           </p>
-          <Button variant="brand" size="lg" onClick={() => openTrip(preview.tripId)}>
+          <Button
+            variant="brand"
+            size="lg"
+            onClick={() => navigate(`/trips/${preview.tripId}`)}
+          >
             {t("accept.open")}
           </Button>
         </>

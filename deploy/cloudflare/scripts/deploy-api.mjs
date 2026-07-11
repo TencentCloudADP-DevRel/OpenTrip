@@ -5,7 +5,7 @@
  * Database (pick one):
  *   - GitHub secret / env HYPERDRIVE_ID → injects Hyperdrive binding at deploy time
  *     (never commit the id). Optional HYPERDRIVE_CACHE_DISABLED_ID adds a second
- *     cache-disabled binding for auth + agent fresh reads.
+ *     cache-disabled binding for consistency-critical business repositories.
  *   - Worker secret DATABASE_URL for direct connect
  *
  * Non-secret Worker vars are taken from process.env when set (GitHub Actions

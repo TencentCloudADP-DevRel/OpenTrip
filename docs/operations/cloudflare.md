@@ -37,7 +37,7 @@ local/manual defaults only.
 | `CLOUDFLARE_API_TOKEN` | yes | Workers + Pages + DNS + Hyperdrive + R2 |
 | `CLOUDFLARE_ACCOUNT_ID` | yes | Account id |
 | `HYPERDRIVE_ID` | for API | Cached Hyperdrive id (deploy inject; never commit) |
-| `HYPERDRIVE_CACHE_DISABLED_ID` | for API | Cache-disabled Hyperdrive for auth + agent fresh reads |
+| `HYPERDRIVE_CACHE_DISABLED_ID` | for API | Cache-disabled Hyperdrive for consistency-critical repositories |
 | `DATABASE_URL` | for migrate | Origin Postgres URL (CI only, not Worker runtime) |
 | `BETTER_AUTH_SECRET` | for API | ≥ 32 chars |
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | for API | R2 S3 API credentials |
@@ -79,8 +79,10 @@ Manual re-run: **Actions → Deploy Cloudflare → Run workflow**.
 ### A. Hyperdrive (recommended — PlanetScale Postgres)
 
 1. Create **two** Hyperdrive configs against the same Postgres origin:
-   - `opentrip-db` — query caching enabled (ordinary reads).
-   - `opentrip-db-fresh` — `--caching-disabled` (auth + agent session).
+   - `opentrip-db` — query caching enabled, reserved for explicitly
+     stale-tolerant read models.
+   - `opentrip-db-fresh` — `--caching-disabled` (Trip/member state,
+     authorization, invites, preferences, auth, and agent sessions).
 2. Store the ids as GitHub secrets (never commit):
 
 ```bash
@@ -103,6 +105,12 @@ If `HYPERDRIVE_ID` is unset, the Worker uses secret `DATABASE_URL` instead.
 Set `DATABASE_PROVIDER` / `DATABASE_SSL` for MySQL direct connect as needed.
 
 Worker prefers Hyperdrive when the binding is present.
+
+When the cached Hyperdrive binding is present, the Worker requires the fresh
+binding and returns 503 if it is missing. It never silently routes
+consistency-critical repositories through the cached binding. Cache-disabled
+Hyperdrive still provides managed connection pooling; only query-result caching
+is disabled.
 
 ## 2. Migrate + seed / one-shot deploy init
 
@@ -259,13 +267,13 @@ ADR: [../decisions/0006-mutation-echo-over-refetch.md](../decisions/0006-mutatio
    open: optimistic `collapsed: false` was overwritten by a cached `true`.
    Agent `POST …/messages` returns the inserted `message` DTO so the SPA can
    `setQueryData` without an immediate list GET.
-2. **Keep Hyperdrive query caching enabled** for ordinary reads. Do not disable
-   caching globally to paper over write-then-read bugs.
-3. **Use a second, cache-disabled Hyperdrive binding** (`HYPERDRIVE_CACHE_DISABLED`)
-   for reads that must be fresh: Better Auth session/permissions and the agent
-   session repository (`GET/POST …/agent/messages`, `GET …/agent/events`). The
-   Worker wires `poolFresh` from that binding (falls back to `HYPERDRIVE` when
-   unset). Prefer returning the write result for UI preference mutations.
+2. **Classify reads by consistency.** Business state and authorization use the
+   cache-disabled binding; query caching is reserved for a separately named,
+   stale-tolerant read model.
+3. **Use the cache-disabled Hyperdrive binding** (`HYPERDRIVE_CACHE_DISABLED`)
+   for Trip/member state, permissions, invites, preferences, Better Auth, and
+   agent sessions. The Worker refuses a cached-only Hyperdrive deployment
+   rather than silently weakening consistency.
 4. **Trip create** follows the same echo pattern: `POST /api/trips` returns the
    full `TripDto`; the SPA `setQueryData`s the list + detail caches and opens
    the planner instead of refetching `GET /api/trips`.

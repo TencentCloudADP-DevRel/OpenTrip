@@ -127,6 +127,11 @@ Defined in `domain/trip/ports`:
 
 One repository per aggregate/model. Adapters live in `infrastructure/persistence`.
 
+The composition root binds Trip, invite, preference, auth, and agent repositories
+to the cache-disabled SQL client. This is an infrastructure consistency policy;
+domain ports contain no Hyperdrive or cache concepts. Cached SQL clients may be
+used only by separately named, stale-tolerant read-model adapters.
+
 ## Invites
 
 `domain/invite` holds the invite model, separate from the Trip aggregate:

@@ -42,7 +42,7 @@ Production config lives in **GitHub Actions secrets/variables**, not in git.
 | `CLOUDFLARE_API_TOKEN` | Wrangler auth (Workers Scripts Write, Pages Write, DNS Write, Account Read, Hyperdrive, R2) |
 | `CLOUDFLARE_ACCOUNT_ID` | Account id |
 | `HYPERDRIVE_ID` | Hyperdrive config id (deploy inject, cached) |
-| `HYPERDRIVE_CACHE_DISABLED_ID` | Cache-disabled Hyperdrive for auth/agent |
+| `HYPERDRIVE_CACHE_DISABLED_ID` | Cache-disabled Hyperdrive for consistency-critical repositories |
 | `DATABASE_URL` | Origin DB URL for CI migrate only |
 | `BETTER_AUTH_SECRET` | Auth signing secret |
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | R2 credentials |

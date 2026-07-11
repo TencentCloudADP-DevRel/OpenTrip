@@ -36,8 +36,9 @@ Unless noted, success body is `{ "data": … }` and the tables describe the **pa
 ### `POST /api/trip-invites/:token/accept`
 
 - **Auth:** session  
-- **Response:** `{ tripId: string; joined: boolean }` — `joined: false` if
-  already a member (idempotent).  
+- **Response:** `{ trip: TripDto; joined: boolean }` — the fresh Trip mutation
+  echo lets the client populate detail/list caches before navigation;
+  `joined: false` if already a member (idempotent).
 - **Errors:** domain `invite_*` codes when expired/revoked/email restricted.
 
 ---

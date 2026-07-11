@@ -30,31 +30,31 @@ import type { AppConfig } from "../config";
 
 export interface CreateContainerOptions {
   /**
-   * Max connections for the cached domain pool (Workers: prefer 3 when a
-   * separate fresh pool is also open).
+   * Max connections for the cache-enabled pool. This pool is reserved for
+   * explicitly stale-tolerant read models.
    */
   poolMax?: number;
   /**
-   * Max connections for the cache-disabled fresh pool (auth + agent).
+   * Max connections for the cache-disabled consistency pool.
    * Ignored when `freshDatabaseUrl` is omitted or equals `config.databaseUrl`
    * (single shared pool).
    */
   poolMaxFresh?: number;
   /**
-   * Connection string for auth + agent session reads that must not hit
-   * Hyperdrive query cache. When omitted or identical to `config.databaseUrl`,
-   * a single shared pool is used (Node / single-binding Workers).
+   * Connection string for business state, authorization, and commands that
+   * must not hit Hyperdrive query cache. When omitted or identical to
+   * `config.databaseUrl`, a single shared pool is used (Node/direct DB).
    */
   freshDatabaseUrl?: string;
 }
 
 export interface Container {
   config: AppConfig;
-  /** Cached (or sole) SQL client — trip aggregate and ordinary reads. */
+  /** Cache-enabled (or sole) SQL client for explicitly stale-tolerant reads. */
   pool: Pool;
   /**
-   * Cache-disabled SQL client for Better Auth + agent session. Same object as
-   * `pool` when no separate fresh URL is configured.
+   * Cache-disabled SQL client for all consistency-critical repositories. Same
+   * object as `pool` when no separate fresh URL is configured.
    */
   poolFresh: Pool;
   auth: Auth;
@@ -98,7 +98,7 @@ export function createContainer(
     !freshUrl || freshUrl === config.databaseUrl.trim();
 
   const cached = createDatabaseHandles(config, { max: poolMax });
-  const pool = cached.pool;
+  const poolCached = cached.pool;
 
   let poolFresh: Pool;
   let authDriver: unknown;
@@ -106,7 +106,7 @@ export function createContainer(
   let endCachedSide: () => Promise<void>;
 
   if (sharePool) {
-    poolFresh = pool;
+    poolFresh = poolCached;
     authDriver = cached.authDatabase.driver;
     endAuthSide = cached.authDatabase.end;
     endCachedSide = async () => {};
@@ -119,7 +119,10 @@ export function createContainer(
     endCachedSide = cached.authDatabase.end;
   }
 
-  const tripRepository = new SqlTripRepository(pool);
+  // Domain aggregates, permissions, invites, preferences, auth, and agent
+  // sessions are consistency-critical. Hyperdrive does not invalidate cached
+  // SELECTs after writes, so these adapters must all use the fresh binding.
+  const tripRepository = new SqlTripRepository(poolFresh);
   const auth = createAuth(config, authDriver, {
     tripRepository,
     loadSampleTripTemplate: createSampleTripTemplateLoader(tripRepository),
@@ -128,11 +131,11 @@ export function createContainer(
   const geoService = new GeoService(createGeoProvider(config.geo));
   const tripService = new TripService(tripRepository, coverImages, geoService);
   const tripInviteService = new TripInviteService(
-    new SqlTripInviteRepository(pool),
+    new SqlTripInviteRepository(poolFresh),
     tripRepository,
   );
   const preferenceService = new PreferenceService(
-    new SqlUserPreferenceRepository(pool),
+    new SqlUserPreferenceRepository(poolFresh),
   );
   const avatarService = new AvatarService(fileStorage);
   const tripMediaService = new TripMediaService(fileStorage, tripService);
@@ -166,11 +169,11 @@ export function createContainer(
 
   const disposePools = async () => {
     if (sharePool) {
-      await Promise.allSettled([pool.end(), endAuthSide()]);
+      await Promise.allSettled([poolCached.end(), endAuthSide()]);
       return;
     }
     await Promise.allSettled([
-      pool.end(),
+      poolCached.end(),
       endCachedSide(),
       poolFresh.end(),
       endAuthSide(),
@@ -179,7 +182,7 @@ export function createContainer(
 
   return {
     config,
-    pool,
+    pool: poolCached,
     poolFresh,
     auth,
     tripService,

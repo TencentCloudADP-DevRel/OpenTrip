@@ -1,5 +1,14 @@
 # Quality
 
+## Hyperdrive consistency gate
+
+- Commands, authorization, invites, preferences, auth, and agent sessions use
+  the cache-disabled repository composition.
+- Mutation responses echo the written DTO; clients update every rendered query
+  key without an immediate invalidation.
+- Tests cover consecutive mutations and invite accept → detail navigation with
+  a stale cached adapter separated from the fresh adapter.
+
 Reference: [../reference/template-agentic-coding.md](../reference/template-agentic-coding.md).
 
 ## Gates

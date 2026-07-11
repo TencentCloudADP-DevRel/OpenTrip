@@ -7,8 +7,8 @@ interface WorkerEnv extends RawEnv {
   /** Optional Hyperdrive binding (query cache enabled). Prefer when available. */
   HYPERDRIVE?: { connectionString: string };
   /**
-   * Optional cache-disabled Hyperdrive for auth + agent session reads that
-   * need read-after-write consistency. Falls back to HYPERDRIVE / DATABASE_URL.
+   * Cache-disabled Hyperdrive for consistency-critical business repositories.
+   * Required whenever the cached Hyperdrive binding is configured.
    */
   HYPERDRIVE_CACHE_DISABLED?: { connectionString: string };
   /** Required when HYPERDRIVE is not bound (direct MySQL/Postgres). */
@@ -95,6 +95,20 @@ export default {
     env: WorkerEnv,
     ctx: WorkerExecutionContext,
   ): Promise<Response> {
+    if (
+      env.HYPERDRIVE?.connectionString?.trim() &&
+      !env.HYPERDRIVE_CACHE_DISABLED?.connectionString?.trim()
+    ) {
+      console.error(
+        "HYPERDRIVE_CACHE_DISABLED is required when cached Hyperdrive is configured",
+      );
+      return emergencyCorsResponse(
+        request,
+        env,
+        503,
+        "Database consistency binding is not configured",
+      );
+    }
     // Always build a fresh client pool per request on Workers.
     // Hyperdrive still pools TCP to the origin at the edge; caching a
     // node-postgres Pool across isolate freezes left connections "pending"

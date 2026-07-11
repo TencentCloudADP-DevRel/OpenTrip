@@ -8,6 +8,7 @@ import {
   type TripInviteSnapshot,
 } from "../domain/invite";
 import type { TripRepository } from "../domain/trip";
+import { toTripDto, type TripDto } from "./dto";
 
 /** The user redeeming or creating an invite. */
 export interface InviteActor {
@@ -52,7 +53,7 @@ export interface InvitePreview {
 }
 
 export interface AcceptedInvite {
-  tripId: string;
+  trip: TripDto;
   /** True when this call added the user; false when they were already a member. */
   joined: boolean;
 }
@@ -183,7 +184,7 @@ export class TripInviteService {
 
     if (trip.memberByUserId(actor.id)) {
       await this.invites.recordAcceptance(invite.id, actor.id);
-      return { tripId: invite.tripId, joined: false };
+      return { trip: toTripDto(trip, actor.id), joined: false };
     }
 
     const usability = checkInviteUsable(invite, {
@@ -206,7 +207,7 @@ export class TripInviteService {
     });
     await this.trips.addMember(invite.tripId, member);
     await this.invites.recordAcceptance(invite.id, actor.id);
-    return { tripId: invite.tripId, joined: true };
+    return { trip: toTripDto(trip, actor.id), joined: true };
   }
 
   private async requireInvite(token: string): Promise<TripInviteSnapshot> {

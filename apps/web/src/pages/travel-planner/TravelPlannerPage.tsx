@@ -21,7 +21,7 @@ import {
   type AgentSuggestion,
 } from "@/shared/api";
 import { queryKeys } from "@/shared/config";
-import { stopNumbers, toTripSummary, type Trip, type TripSummary } from "@/entities/trip";
+import { stopNumbers, upsertTripSummary, type Trip, type TripSummary } from "@/entities/trip";
 import { CalendarRange, Map as MapIcon, Wallet } from "lucide-react";
 import { useRouter } from "@/app/router";
 import { useSession } from "@/shared/auth";
@@ -309,13 +309,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
       queryClient.setQueryData(queryKeys.trip(tripId), trip);
       queryClient.setQueryData(
         queryKeys.trips,
-        (old: TripSummary[] | undefined) => {
-          if (!old) return old;
-          const summary = toTripSummary(trip);
-          return old.map((row) =>
-            row.id === trip.id ? { ...row, ...summary, createdAt: row.createdAt } : row,
-          );
-        },
+        (old: TripSummary[] | undefined) => upsertTripSummary(old, trip),
       );
     },
   });

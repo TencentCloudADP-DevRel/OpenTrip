@@ -37,9 +37,11 @@ the mutation response
    that echo (derive list rows with pure mappers such as `toTripSummary`). Do
    not treat an immediate `invalidateQueries` + list GET as the source of truth
    for the just-written entity.
-3. **Fresh reads:** Keep a second, cache-disabled Hyperdrive binding
-   (`HYPERDRIVE_CACHE_DISABLED` / `poolFresh`) for auth and agent session polls
-   only — not as a substitute for write-echo on ordinary trip CRUD.
+3. **Consistency reads:** Business aggregates, authorization, invites,
+   preferences, auth, and agent sessions use the cache-disabled Hyperdrive
+   binding (`HYPERDRIVE_CACHE_DISABLED` / `poolFresh`). A command must never
+   start from a cached aggregate snapshot. Cache-enabled Hyperdrive is reserved
+   for explicitly stale-tolerant read models.
 4. **Trip create UX:** After `POST /api/trips`, update caches and navigate to
    the planner so the one-shot `@agent` seed can run without waiting on a fresh
    list card.
@@ -52,3 +54,6 @@ the mutation response
 - Production QA is required for write-then-list flows; local green is not enough.
 - Agents and humans must not “fix” missing list items by globally disabling
   Hyperdrive query caching.
+- Fresh repositories and mutation echo solve different halves of the problem:
+  fresh reads make server decisions correct; echo keeps the SPA correct without
+  an unnecessary follow-up request.

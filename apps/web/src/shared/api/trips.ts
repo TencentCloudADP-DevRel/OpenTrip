@@ -224,7 +224,7 @@ export interface InvitePreview {
 }
 
 export interface AcceptedInvite {
-  tripId: string;
+  trip: Trip;
   joined: boolean;
 }
 

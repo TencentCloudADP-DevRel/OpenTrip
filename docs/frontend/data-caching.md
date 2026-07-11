@@ -1,9 +1,9 @@
 # React Query cache and write-echo
 
 OpenTrip’s SPA uses TanStack Query (`@tanstack/react-query`) for server state.
-On Cloudflare, many `SELECT`s go through **Hyperdrive query caching**. A refetch
-right after a write can return a **stale** row for up to ~60s. Local Docker has
-no Hyperdrive, so this class of bug often **only reproduces in production**.
+Hyperdrive does not invalidate cached `SELECT`s after a write. OpenTrip routes
+consistency-critical repositories through the cache-disabled binding, while the
+SPA still uses mutation echo to avoid an unnecessary request and response race.
 
 Canonical ops detail:
 [../operations/cloudflare.md#hyperdrive-read-after-write](../operations/cloudflare.md#hyperdrive-read-after-write).
@@ -29,7 +29,7 @@ TanStack Query documents this as
 | `onSuccess: (data) => queryClient.setQueryData(key, data)` | `onSuccess: () => invalidateQueries(listKey)` as the only update |
 | Map `Trip` → `TripSummary` with `toTripSummary` and prepend the list | Assume `GET /api/trips` is fresh right after `POST /api/trips` |
 | Echo inserts from the API (agent messages, preferences, trip create) | Re-`SELECT` in the Worker after UPSERT and return that as the HTTP body |
-| Use `HYPERDRIVE_CACHE_DISABLED` / `poolFresh` only for auth + agent history | Disable Hyperdrive caching globally to “fix” UI staleness |
+| Use `poolFresh` for business state and authorization; reserve cached pools for explicit stale-tolerant projections | Route a consistency-critical repository through cached Hyperdrive |
 
 ## Established patterns in this repo
 
@@ -54,7 +54,7 @@ Helpers:
 | New trip missing from home grid for ~30–60s after wizard success (prod only) | `invalidateQueries(trips)` → stale `GET /api/trips` |
 | Stop appears then vanishes after add (prod only) | `invalidateQueries(trip)` after agent stream/events → stale `GET /api/trips/:id` overwrites write-echo |
 | Approve suggestion applies but UI reverts (prod only) | API `applySuggestion` re-`SELECT`ed trip for response body |
-| Joined trip missing from home after invite accept (prod only) | `invalidateQueries(trips)` after accept → stale list GET |
+| Joined trip missing from home after invite accept | Accept response omitted the Trip echo or the SPA did not merge it into detail/list caches |
 | Agent panel snaps shut after open | Preference PATCH response re-`SELECT`ed a cached `collapsed: true` |
 | New agent bubble missing until poll/refresh | History list GET after insert hit stale cache |
 | Parallel `updateDay` / `insertStop`: Day 1 city or earlier stops “roll back” (prod only) | Same-turn `findById` between patches (stale Hyperdrive SELECT) and/or SPA last-wins full trip echo — see agent write-tool echo below |
@@ -64,7 +64,7 @@ Helpers:
 - User-driven refresh / retry after an error.
 - Background sync **after** the UI already shows echoed data, if you accept a
   possible brief regression within `max_age` (prefer avoiding for list creates).
-- Reads that use `poolFresh` (auth, agent session) — still prefer echo when the
+- Reads that use `poolFresh` — still prefer echo when the
   mutation already returns the row.
 
 ## Checklist for new mutations
@@ -73,4 +73,5 @@ Helpers:
 2. Does the SPA `setQueryData` every query key the UI reads for that entity?
 3. If a list must update, is the new/updated item merged from the response
    (prepend/replace) rather than refetched?
-4. Did you verify on **Cloudflare**, not only `make dev`?
+4. Does the command and every authorization/precondition read use `poolFresh`?
+5. Did you verify on **Cloudflare**, not only `make dev`?

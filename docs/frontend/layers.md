@@ -64,6 +64,11 @@ widgets and features. Two pages:
 
 Pages may hold page-specific state and data fetching (Pages First).
 
+Trip mutation lifecycle and `QueryClient` calls remain page-owned. The reusable
+`entities/trip` public API exposes only pure immutable mappers such as
+`toTripSummary` and `upsertTripSummary`; it does not import TanStack Query,
+routing, or transport code.
+
 ## widgets
 
 Reusable composite blocks used by more than one page:
