@@ -163,6 +163,20 @@ OTP copy is built by `buildOtpEmail` (`sign-in`, `email-verification`,
 `forget-password`, `change-email`). Link copy is built by `buildLinkEmail`
 (`reset-password`, `change-email-confirmation`).
 
+**Production diagnostics (Workers Observability):**
+
+- Success: `[email:resend] accepted id=… to=***@domain …` (use `id` in the
+  Resend dashboard).
+- Failure: `[email:resend] send failed status=… body=…`. Better Auth's
+  `runInBackgroundOrAwait` still catches the throw, so sign-up / OTP routes
+  often return **200 even when Resend fails** — always check these log lines,
+  not only HTTP status.
+- `POST /api/auth/email-otp/send-verification-otp` → `400` with
+  `MISSING_RESPONSE` / `VERIFICATION_FAILED` is **Turnstile**, not Resend.
+  The OTP step shows a fresh captcha; resend stays disabled until it completes.
+- Domain DNS for `opentrip.im` must include Resend's DKIM
+  (`resend._domainkey` TXT) plus SPF on `send` (TXT + MX). Optional: `_dmarc`.
+
 ### Social providers
 
 Google OAuth is enabled when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
