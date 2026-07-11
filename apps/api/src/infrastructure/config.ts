@@ -366,12 +366,13 @@ function parseAiConfig(env: RawEnv): AiConfig | null {
 
     const provider = env.AI_PROVIDER?.trim() || "openai";
     const baseUrlRaw = env.AI_BASE_URL?.trim() || null;
-    // MiniMax: default to Anthropic-compatible base so thinking streams as
-    // separate reasoning parts (OpenAI-compatible dumps thinking into text).
+    // MiniMax: default to Anthropic-compatible `…/anthropic/v1` so
+    // `@ai-sdk/anthropic` hits `/v1/messages` (thinking → reasoning parts).
+    // Matches vercel-minimax-ai-provider; see ai-sdk.dev community MiniMax docs.
     const baseUrl =
         baseUrlRaw ??
         (provider.toLowerCase() === "minimax"
-            ? "https://api.minimaxi.com/anthropic"
+            ? "https://api.minimaxi.com/anthropic/v1"
             : null);
 
     return {

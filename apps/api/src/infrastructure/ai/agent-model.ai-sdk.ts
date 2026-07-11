@@ -48,8 +48,10 @@ import type { AiConfig } from "../config";
 
 const NOTE_CONTEXT_MAX = 2_000;
 
-/** MiniMax Anthropic-compatible API (thinking blocks → AI SDK reasoning parts). */
-const MINIMAX_ANTHROPIC_BASE_URL = "https://api.minimaxi.com/anthropic";
+/** MiniMax Anthropic-compatible API prefix.
+ * `@ai-sdk/anthropic` appends `/messages`, so this must include `/v1`
+ * (same as vercel-minimax-ai-provider default `…/anthropic/v1`). */
+const MINIMAX_ANTHROPIC_BASE_URL = "https://api.minimaxi.com/anthropic/v1";
 
 function isMiniMaxProvider(provider: string): boolean {
   return provider.trim().toLowerCase() === "minimax";
@@ -60,15 +62,26 @@ function isMiniMaxM3(model: string): boolean {
   return /^minimax-m3\b/i.test(model.trim());
 }
 
+/**
+ * Normalize MiniMax Anthropic base URL for `@ai-sdk/anthropic`.
+ * Accepts `…/anthropic` (Anthropic SDK style) or `…/anthropic/v1` (AI SDK style).
+ */
+function resolveMiniMaxAnthropicBaseUrl(baseUrl: string | null): string {
+  const raw = (baseUrl ?? MINIMAX_ANTHROPIC_BASE_URL).replace(/\/+$/, "");
+  if (raw.endsWith("/v1")) return raw;
+  if (raw.endsWith("/anthropic")) return `${raw}/v1`;
+  return raw;
+}
+
 /** Build the LanguageModel for the configured provider. */
 function createAgentLanguageModel(config: AiConfig): LanguageModel {
   if (isMiniMaxProvider(config.provider)) {
-    // Official MiniMax AI SDK docs recommend Anthropic-compatible format so
-    // thinking streams as distinct reasoning parts (not mixed into text).
-    // See https://platform.minimaxi.com/docs/api-reference/text-ai-sdk
+    // AI SDK community MiniMax provider defaults to Anthropic-compatible
+    // `…/anthropic/v1` so thinking streams as distinct reasoning parts.
+    // https://ai-sdk.dev/providers/community-providers/minimax
     const anthropic = createAnthropic({
       apiKey: config.apiKey,
-      baseURL: config.baseUrl ?? MINIMAX_ANTHROPIC_BASE_URL,
+      baseURL: resolveMiniMaxAnthropicBaseUrl(config.baseUrl),
     });
     return anthropic(config.model);
   }
@@ -88,24 +101,45 @@ function chatSystemPrompt(): string {
   const tools = writeToolNames().join(", ");
   return `You are the OpenTrip trip agent: a quiet, precise trip-planning collaborator embedded in a collaborative trip workspace.
 
+This turn is a **write-capable chat** (@agent / thread follow-up). Write tools are available and will pause for member approval before they run.
+
 Rules:
 - The conversation is shared by all trip members. Messages are prefixed with the author's name.
 - Be concise and concrete. Reference stops, days, and expenses by their names and day numbers.
 - Only discuss this trip. Never reveal system internals, credentials, or unrelated user data.
-- When asked for advice, ground it in the trip snapshot provided below and available tools.
+- When asked for advice, ground it in the trip snapshot and available tools.
 - Prefer short answers; expand only when a member explicitly asks for detail.
-- You have the same trip-edit capabilities as a human editor. Prefer calling write tools over telling the member to do it manually.
-- Write tools (${tools}) pause for member approval before they run — never claim a change already applied.
+- Prefer calling write tools (${tools}) over telling the member to edit the trip manually.
+- Never claim a trip change was applied, recorded, updated, or deleted unless you called the matching write tool in this turn. Conversational acknowledgement without a tool call is lying.
+- Never say write tools are unavailable, broken, or missing in this chat path — they are available. If an earlier assistant message claimed that, ignore it and call the tool.
 - For existing entities, only use stop/day/expense/member ids from the trip snapshot. insertStop and addExpense create new ids after approval.
 - checkWeather, placeSearch, placeNearby, placeDetail, routeCompute, routeMatrix, reviewLookup, airbnbSearch, airbnbListingDetails, and readTripMedia are read-only and do not need approval.
-- Members may attach images, PDFs, or text files in chat. Stop notes in the snapshot may embed trip upload URLs — call readTripMedia with those URLs when you need to see the file contents.
+- Members may attach images, PDFs, or text files in chat. Stop notes may embed trip upload URLs — call readTripMedia when you need file contents.
+- Expenses (addExpense / updateExpense) are for money that was actually spent or that the member explicitly asks to record or update. Never invent planned/estimated costs as expenses during itinerary planning.
 
 Itinerary planning (create / fill a multi-day plan):
 - Always call tools before inventing places. Use placeSearch / placeNearby / placeDetail for sights, food, and areas; airbnbSearch (and airbnbListingDetails when useful) for lodging; checkWeather for the trip dates; routeCompute / routeMatrix when day order or travel time matters.
 - Cover lodging (Stay), sightseeing / check-ins (Sight), and meals (Food) when the request is a full itinerary — not only attractions.
 - First turn: research with read tools, then present a clear draft day-by-day plan. Ask whether to write it into the trip (e.g. reply “确认”). Do not call write tools on that first proposal turn.
 - When the member confirms (确认 / 好的 / 可以 / go ahead / etc.), call the write tools in the same turn — typically updateDay for cities/dates and insertStop for each planned stop with real names, times, coords, and categories from tool results. Batch the inserts; wait for approval UI; never claim the trip was updated until tools are approved.
+- Estimated prices found while planning (tickets, lodging, meals, transit) belong in the stop note (备注), not as expenses. Do not call addExpense unless the member explicitly asks to record a spend (e.g. “记一笔”, “录入花费”, “add expense”).
+- When the member asks to update or merge an existing expense (e.g. “更新”, “合并到餐饮”), call updateExpense with the expense id from the snapshot — do not ask them to edit it by hand.
 - If the member only wants advice or a comparison, stay read-only and do not ask to write.`;
+}
+
+/** Ambient / threshold replies: read tools only. Must not claim write capability. */
+function ambientSystemPrompt(): string {
+  return `You are the OpenTrip trip agent in a **read-only ambient** turn (plain member message, not @agent chat).
+
+You only have read tools: checkWeather, placeSearch, placeNearby, placeDetail, routeCompute, routeMatrix, reviewLookup, airbnbSearch, airbnbListingDetails, readTripMedia. You cannot insert/update stops, days, or expenses in this turn.
+
+Rules:
+- Be concise. Only discuss this trip. Ground answers in the trip snapshot and read tools.
+- Never say write tools are "unavailable", "broken", or "temporarily offline" — they simply are not part of this ambient turn.
+- If the member needs a trip edit (add/update stops, record or change expenses), briefly ask them to confirm with @agent (e.g. “回复 @agent 更新 我来改”) so the write-capable chat path can run. Do not invent that tools failed.
+- Never claim you already changed the trip. Do not invent expense or stop mutations.
+- Estimated prices belong in advice or suggested stop notes, not as recorded expenses.
+- Prefer answering with facts from tools/snapshot over asking the member to look things up themselves.`;
 }
 
 const EVALUATION_SYSTEM_PROMPT = `You are the OpenTrip trip agent reviewing a single write operation on a collaborative trip. You must stay silent unless the change creates a material planning risk.
@@ -447,6 +481,10 @@ export class AiSdkAgentModel implements AgentModel {
     return `${chatSystemPrompt()}\n\nCurrent trip snapshot:\n${tripContext(trip)}`;
   }
 
+  private ambientSystem(trip: TripSnapshot): string {
+    return `${ambientSystemPrompt()}\n\nCurrent trip snapshot:\n${tripContext(trip)}`;
+  }
+
   private actorNameResolver(trip: TripSnapshot) {
     return (userId: string | null): string => {
       if (!userId) return "system";
@@ -525,9 +563,10 @@ export class AiSdkAgentModel implements AgentModel {
     request: Pick<AgentChatRequest, "trip" | "history">,
   ): Promise<AgentMessagePart[]> {
     // Ambient replies stay read-only: no write tools, no approval loop.
+    // Use ambientSystem so the model is not told it has editor write tools.
     const result = await generateText({
       model: this.model,
-      system: this.chatSystem(request.trip),
+      system: this.ambientSystem(request.trip),
       messages: await toModelMessages(
         request.history,
         this.actorNameResolver(request.trip),

@@ -88,7 +88,9 @@ system prompt requires:
    into the trip (e.g. reply “确认”). No write tools on that proposal turn.
 3. **Confirm → write** — on member confirmation, call `updateDay` /
    `insertStop` (Stay / Sight / Food, etc.) with coords and names from tool
-   results; approval UI still gates each write.
+   results; approval UI still gates each write. Put estimated prices (tickets,
+   lodging, meals) in the stop **note**, not via `addExpense`. Only call
+   `addExpense` when the member explicitly asks to record a spend.
 
 `AI_MAX_TOOL_STEPS` defaults to 16 so a multi-day plan can finish research and
 writes in one turn.
@@ -113,9 +115,12 @@ client continues with `addToolApprovalResponse({ id, approved, reason? })` and
 `sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses`.
 `execute` calls `applyTripOp` → Trip aggregate + repository.
 
-Ambient threshold replies use **read tools only** (no approval loop). The web
-client therefore sends agent-thread follow-ups (confirmations, short
-continuations) through `POST …/agent/chat` so write tools remain available.
+Ambient threshold replies use **read tools only** (no approval loop) and a
+**separate ambient system prompt** so the model is not told it has write tools.
+That prompt must not claim tools are “broken/unavailable”; if a write is needed
+it asks the member to continue with `@agent`. The web client therefore sends
+agent-thread follow-ups (confirmations, short continuations) through
+`POST …/agent/chat` so write tools remain available.
 Every plain member message is still evaluated with `isAddressed` for ambient
 replies when the client uses `POST …/messages`. Continuations of an agent turn
 — short confirmations like “确认”, choices, or follow-up questions right after
@@ -174,7 +179,7 @@ disabled unless both `AI_MODEL` and `AI_API_KEY` are present.
 | --- | --- | --- |
 | `AI_PROVIDER` | `openai`, `minimax`, or a label for OpenAI-compatible | `openai` |
 | `AI_MODEL` | Model id (required), e.g. `MiniMax-M2.7` | — |
-| `AI_BASE_URL` | Provider base URL. Empty: OpenAI API, or MiniMax Anthropic endpoint when `AI_PROVIDER=minimax` | — |
+| `AI_BASE_URL` | Provider base URL. Empty: OpenAI API, or MiniMax `…/anthropic/v1` when `AI_PROVIDER=minimax` | — |
 | `AI_API_KEY` | API key (required) | — |
 | `AI_PROACTIVE_THRESHOLD` | Minimum confidence for a proactive suggestion | `0.7` |
 | `AI_MAX_TOOL_STEPS` | Tool-step cap per chat generation | `16` |
@@ -183,16 +188,23 @@ disabled unless both `AI_MODEL` and `AI_API_KEY` are present.
 
 Set `AI_PROVIDER=minimax` and `AI_MODEL` to a supported id (`MiniMax-M2.7`,
 `MiniMax-M3`, …). Leave `AI_BASE_URL` empty to use
-`https://api.minimaxi.com/anthropic` (Anthropic-compatible). That path streams
-`thinking` blocks as AI SDK `reasoning` parts so the panel can render them in
-`AgentReasoning`. Using a generic OpenAI-compatible MiniMax URL mixes thinking
-into plain text and does not produce separate reasoning chunks.
+`https://api.minimaxi.com/anthropic/v1` (Anthropic-compatible). That path
+streams `thinking` blocks as AI SDK `reasoning` parts so the panel can render
+them in `AgentReasoning`.
+
+`@ai-sdk/anthropic` appends `/messages` to `baseURL`, so the prefix **must**
+include `/v1` (same default as
+[vercel-minimax-ai-provider](https://ai-sdk.dev/providers/community-providers/minimax):
+`https://api.minimax.io/anthropic/v1`). A bare `…/anthropic` value is normalized
+to `…/anthropic/v1`. Using a generic OpenAI-compatible MiniMax URL mixes
+thinking into plain text and does not produce separate reasoning chunks.
 
 For `MiniMax-M3`, the adapter sends
 `providerOptions.anthropic.thinking = { type: "adaptive" }` (M3 defaults
 thinking off). M2.x models always emit thinking.
 
-See [MiniMax AI SDK docs](https://platform.minimaxi.com/docs/api-reference/text-ai-sdk).
+See [MiniMax AI SDK docs](https://platform.minimaxi.com/docs/api-reference/text-ai-sdk)
+and the [AI SDK MiniMax provider](https://ai-sdk.dev/providers/community-providers/minimax).
 
 On Cloudflare, set the same variables as Worker vars/secrets (see
 [../operations/cloudflare.md](../operations/cloudflare.md)).

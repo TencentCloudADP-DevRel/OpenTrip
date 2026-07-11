@@ -279,7 +279,7 @@ export function AgentMessageItem({
       (!message.actorUserId && !message.actorName));
   const authorLabel = isAgent
     ? t("panel.agentName")
-    : (message.actorName ?? t("panel.systemName"));
+    : (message.actorName ?? member?.name ?? t("panel.systemName"));
   const replyText = (body.trim() || quote?.text || "").trim();
   const canReply =
     Boolean(onReply) &&

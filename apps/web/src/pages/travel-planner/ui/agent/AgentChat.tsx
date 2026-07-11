@@ -72,6 +72,7 @@ export function AgentChat({
   // filter drops the live bubble as soon as polling/refetch lands the row
   // (avoids Steven + "系统" duplicates while the stream is still open).
   const persistedIds = new Set(persisted.map((m) => m.id));
+  const currentMember = trip.members.find((m) => m.isCurrentUser);
   const live: AgentDisplayMessage[] = liveMessages
     .filter((m) => !persistedIds.has(m.id))
     .map((m) => ({
@@ -80,8 +81,10 @@ export function AgentChat({
       // Keep flattened text for stop-context parsing / system fallbacks, but
       // AgentMessageItem prefers `parts` so text/reasoning deltas re-render.
       text: textFromParts(m.parts),
-      actorUserId: null,
-      actorName: null,
+      // useChat has no actor metadata — stamp the current member so the
+      // header shows their name instead of falling back to "系统".
+      actorUserId: currentMember?.userId ?? null,
+      actorName: currentMember?.name ?? null,
       source: "chat" as const,
       createdAt: null,
       parts: m.parts,

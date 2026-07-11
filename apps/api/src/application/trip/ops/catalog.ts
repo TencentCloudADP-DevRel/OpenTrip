@@ -209,7 +209,7 @@ export const TRIP_OPS = [
     kind: "add_expense",
     toolName: "addExpense",
     description:
-      "Add a new shared expense (create). payer and participants must be member ids from the snapshot. Requires member approval.",
+      "Add a new shared expense for money that was actually spent or that the member explicitly asked to record. Do not use for planned/estimated itinerary costs — put those in the stop note instead. payer and participants must be member ids from the snapshot. Requires member approval.",
     needsApproval: true,
     allowProactive: true,
     inputSchema: expenseDraftSchema,

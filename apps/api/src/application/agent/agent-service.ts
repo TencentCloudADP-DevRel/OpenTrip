@@ -73,6 +73,21 @@ function textFromAgentParts(parts: AgentMessage["parts"]): string {
     .trim();
 }
 
+/** True when a streamed assistant UIMessage has anything worth persisting. */
+function assistantPartsHaveContent(parts: AgentMessage["parts"]): boolean {
+  return parts.some((p) => {
+    if (typeof p !== "object" || p === null) return false;
+    const type = (p as { type?: unknown }).type;
+    if (type === "text" || type === "reasoning") {
+      const text = (p as { text?: unknown }).text;
+      return typeof text === "string" && text.trim().length > 0;
+    }
+    if (typeof type === "string" && type.startsWith("tool-")) return true;
+    if (type === "file") return true;
+    return false;
+  });
+}
+
 /** Use cases for the shared per-trip agent session: chat, operation-triggered
  * evaluation, and suggestion lifecycle. Wired only when AI is configured. */
 export class AgentService {
@@ -297,6 +312,10 @@ export class AgentService {
               return (p as { state?: unknown }).state === "approval-requested";
             });
             if (awaitingApproval) return;
+
+            // Stream errors (e.g. wrong MiniMax base URL → 404) still fire
+            // onFinish with an empty UIMessage. Do not leave a blank bubble.
+            if (!assistantPartsHaveContent(parts)) return;
 
             await this.appendMessage(trip, {
               // Reuse the streamed UIMessage id so the client can drop the live
