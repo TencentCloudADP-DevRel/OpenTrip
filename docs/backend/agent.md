@@ -115,6 +115,16 @@ client continues with `addToolApprovalResponse({ id, approved, reason? })` and
 `sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses`.
 `execute` calls `applyTripOp` → Trip aggregate + repository.
 
+**Same-turn multi-tool writes:** AI SDK may invoke several approved write tools
+in parallel. `AgentService.streamChat` serializes them on one in-memory `Trip`
+for the request (`createSequentialTripPatchApplier`): load editable once, apply
+each patch on that aggregate, echo `toTripDto(working)` — do **not**
+`findById` between patches. Hyperdrive can serve a stale SELECT for ~60s after
+a write; reloading would make later tool results look like earlier days/stops
+“rolled back,” and a full-trip SPA `setQueryData` would wipe the UI. The client
+additionally merges each echo by op (`mergeTripToolEcho`) so only the mutated
+day/stop/expense overlays the planner cache.
+
 Ambient threshold replies use **read tools only** (no approval loop) and a
 **separate ambient system prompt** so the model is not told it has write tools.
 That prompt must not claim tools are “broken/unavailable”; if a write is needed
@@ -225,9 +235,9 @@ it with `setQueryData` so the bubble appears immediately without relying on a
 list GET that may hit a stale Hyperdrive cache (same write-echo rule as trip
 create — [../frontend/data-caching.md](../frontend/data-caching.md)). Approved
 write tools return `{ ok, summary, trip }` (in-memory `TripDto`, not a
-re-`SELECT`); the SPA applies `trip` via `setQueryData` and must **not**
-`invalidateQueries(trip)` after stream settle or agent-events polls — that
-path was wiping freshly added stops in production. Avatars resolve members by
+re-`SELECT`); the SPA merges each echo by tool op into `queryKeys.trip` and
+must **not** `invalidateQueries(trip)` after stream settle or agent-events
+polls — that path was wiping freshly added stops in production. Avatars resolve members by
 `actorUserId` (not display name) so duplicate names stay distinct. The
 collapsed state persists via
 `PUT /api/users/preferences/agent-panel` (response is the written preference

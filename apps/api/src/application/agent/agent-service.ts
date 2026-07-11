@@ -26,9 +26,11 @@ import {
 } from "./file-parts";
 import { buildUserMessageParts, containsAgentMention, mentionedUserIdsFromParts } from "./mentions";
 import { looksLikeAgentThreadFollowUp } from "./addressed";
+import { createSequentialTripPatchApplier } from "./sequential-trip-patch-applier";
 
 export { containsAgentMention } from "./mentions";
 export { looksLikeAgentThreadFollowUp } from "./addressed";
+export { createSequentialTripPatchApplier } from "./sequential-trip-patch-applier";
 
 /** Thrown when an apply attempt loses a race or targets a stale suggestion.
  * Mapped to HTTP 409 at the edge. */
@@ -261,35 +263,13 @@ export class AgentService {
       limit: CHAT_CONTEXT_LIMIT,
     });
 
-    let patchQueue: Promise<void> = Promise.resolve();
-    const applyPatchSequentially = (patch: PendingPatch) => {
-      const run = async () => {
-        try {
-          // AI SDK can execute multiple approved tool calls concurrently. Run
-          // them one at a time so each patch reloads the trip after the prior
-          // patch has saved the aggregate.
-          const editable = await this.loadEditable(tripId, userId);
-          const result = await this.applyPatch(editable, patch, userId);
-          if (!result.ok) return result;
-          // Echo the in-memory aggregate — do not re-SELECT (Hyperdrive).
-          return {
-            ok: true as const,
-            summary: result.summary,
-            trip: toTripDto(editable, userId),
-          };
-        } catch (err) {
-          const message =
-            err instanceof Error ? err.message : "Failed to apply trip change";
-          return { ok: false as const, error: message };
-        }
-      };
-      const result = patchQueue.then(run, run);
-      patchQueue = result.then(
-        () => undefined,
-        () => undefined,
-      );
-      return result;
-    };
+    // One in-memory Trip for this request — never findById between patches
+    // (Hyperdrive SELECT cache would echo stale sibling days/stops).
+    const applyPatchSequentially = createSequentialTripPatchApplier({
+      loadEditable: () => this.loadEditable(tripId, userId),
+      apply: (editable, patch) => this.applyPatch(editable, patch, userId),
+      toDto: (editable) => toTripDto(editable, userId),
+    });
 
     // Hold the per-request pool open until onFinish persistence settles.
     // Without this, Workers disposeAfterDeferred() ends the pool as soon as

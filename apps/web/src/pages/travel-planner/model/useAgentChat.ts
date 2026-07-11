@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useChat } from "@ai-sdk/react";
 import {
   DefaultChatTransport,
+  getToolName,
   isToolUIPart,
   lastAssistantMessageIsCompleteWithApprovalResponses,
   type UIMessage,
@@ -18,12 +19,20 @@ import {
 import { uploadTripMedia } from "@/shared/api/media";
 import { config, queryKeys } from "@/shared/config";
 import { looksLikeAgentThreadFollowUp } from "../lib/agentThreadFollowUp";
+import { mergeTripToolEcho } from "./mergeTripToolEcho";
 
 const MENTION_PATTERN = /@agent\b/i;
 
-/** Latest write-tool trip echo from the live stream (Hyperdrive-safe). */
-function tripFromToolOutputs(messages: UIMessage[]): Trip | null {
-  let latest: Trip | null = null;
+/**
+ * Fold write-tool trip echoes onto the current trip cache.
+ * Each tool only overlays the entity it mutated (Hyperdrive-safe).
+ */
+export function tripFromToolOutputs(
+  messages: UIMessage[],
+  previous: Trip | null = null,
+): Trip | null {
+  let merged: Trip | null = previous;
+  let sawEcho = false;
   for (const message of messages) {
     for (const part of message.parts) {
       if (!isToolUIPart(part) || part.state !== "output-available") continue;
@@ -31,10 +40,16 @@ function tripFromToolOutputs(messages: UIMessage[]): Trip | null {
       if (!output || typeof output !== "object") continue;
       const record = output as { ok?: unknown; trip?: unknown };
       if (record.ok !== true || !isTripEcho(record.trip)) continue;
-      latest = record.trip;
+      sawEcho = true;
+      merged = mergeTripToolEcho(
+        merged,
+        getToolName(part),
+        "input" in part ? part.input : undefined,
+        record.trip,
+      );
     }
   }
-  return latest;
+  return sawEcho ? merged : null;
 }
 
 function isTripEcho(value: unknown): value is Trip {
@@ -138,10 +153,12 @@ export function useAgentChat(tripId: string, enabled: boolean) {
 
   const { status, messages: liveMessages, setMessages } = chat;
 
-  // Apply write-tool trip echoes as they land — never invalidate GET /trips/:id
-  // after a stream (Hyperdrive can return a pre-write SELECT and wipe stops).
+  // Apply write-tool trip echoes as they land — merge per op, never replace the
+  // whole trip with a later half-stale echo (Hyperdrive). Do not invalidate
+  // GET /trips/:id after a stream.
   useEffect(() => {
-    const echoed = tripFromToolOutputs(liveMessages);
+    const cached = queryClient.getQueryData<Trip>(queryKeys.trip(tripId)) ?? null;
+    const echoed = tripFromToolOutputs(liveMessages, cached);
     if (!echoed) return;
     void queryClient.cancelQueries({ queryKey: queryKeys.trip(tripId) });
     queryClient.setQueryData(queryKeys.trip(tripId), echoed);

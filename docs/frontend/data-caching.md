@@ -38,7 +38,7 @@ TanStack Query documents this as
 | Create trip wizard | `POST /api/trips` → full `Trip` | `setQueryData(tripId)` + prepend `toTripSummary(trip)` on `queryKeys.trips`, then `navigate(/trips/:id)` — see `CreateTripWizardDialog` |
 | Trip mutations (stops, days, …) | Most return full `Trip` | `cancelQueries` + `setQueryData(queryKeys.trip(id), trip)` via `useTripActions` |
 | Rename trip | `PATCH` → full `Trip` | `setQueryData` trip + merge `toTripSummary` into `queryKeys.trips` |
-| Agent write tools | Tool `execute` returns `{ ok, summary, trip }` | Live stream: `setQueryData(trip)` from tool output — **never** `invalidateQueries(trip)` after stream settle |
+| Agent write tools | Tool `execute` returns `{ ok, summary, trip }` | Live stream: merge each echo by op (`mergeTripToolEcho`) into `queryKeys.trip` — **never** replace the whole trip with a later half-stale echo, and **never** `invalidateQueries(trip)` after stream settle |
 | Agent message | `POST …/agent/messages` echoes `message` | `setQueryData` on agent history (no immediate list GET) |
 | Agent panel preference | PATCH preferences returns written row | `setQueryData(queryKeys.preferences, data)` — must not re-read cached SELECT |
 
@@ -57,6 +57,7 @@ Helpers:
 | Joined trip missing from home after invite accept (prod only) | `invalidateQueries(trips)` after accept → stale list GET |
 | Agent panel snaps shut after open | Preference PATCH response re-`SELECT`ed a cached `collapsed: true` |
 | New agent bubble missing until poll/refresh | History list GET after insert hit stale cache |
+| Parallel `updateDay` / `insertStop`: Day 1 city or earlier stops “roll back” (prod only) | Same-turn `findById` between patches (stale Hyperdrive SELECT) and/or SPA last-wins full trip echo — see agent write-tool echo below |
 
 ## When invalidate is still OK
 
