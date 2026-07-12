@@ -5,8 +5,11 @@
   "name": "opentrip-api",
   "main": "../../apps/api/src/worker.ts",
   "compatibility_date": "2026-04-07",
-  // pg / mysql2 + Better Auth need Node built-ins on Workers.
-  "compatibility_flags": ["nodejs_compat_v2"],
+  // pg / mysql2 + Better Auth need Node built-ins on Workers (including
+  // node:fs via pg-connection-string). Use nodejs_compat (not the legacy
+  // nodejs_compat_v2 alias) so runtime modules such as fs/dns resolve.
+  // See https://developers.cloudflare.com/workers/runtime-apis/nodejs/
+  "compatibility_flags": ["nodejs_compat"],
   // Account comes from CLOUDFLARE_ACCOUNT_ID (Actions secret / local env).
   // Do not commit a production account_id here.
   "workers_dev": true,

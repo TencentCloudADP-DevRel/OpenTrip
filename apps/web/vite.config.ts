@@ -85,6 +85,10 @@ export default defineConfig(({ mode }) => {
                 },
                 injectManifest: {
                     globPatterns: ["**/*.{js,css,html,svg,woff2}"],
+                    // Main SPA chunk exceeds Workbox's 2 MiB default; raise so
+                    // the planner shell is still precached for offline use.
+                    // https://vite-pwa-org.netlify.app/guide/faq.html
+                    maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
                 },
             }),
         ],

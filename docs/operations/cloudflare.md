@@ -170,7 +170,7 @@ export CAPTCHA_PROVIDER=cloudflare-turnstile
 node deploy/cloudflare/scripts/deploy-api.mjs
 ```
 
-`wrangler.api.jsonc` sets `compatibility_flags: ["nodejs_compat_v2"]`,
+`wrangler.api.jsonc` sets `compatibility_flags: ["nodejs_compat"]`,
 observability, custom domain `api.opentrip.im`, and **fallback** non-secret
 vars. Production values come from GitHub Actions variables via
 `deploy-api.mjs`.

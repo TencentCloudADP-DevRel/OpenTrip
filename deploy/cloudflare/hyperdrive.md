@@ -61,7 +61,8 @@ node deploy/cloudflare/scripts/set-hyperdrive.mjs <cached-id>
 If cached `HYPERDRIVE` is configured without `HYPERDRIVE_CACHE_DISABLED`, the
 Worker returns 503. Direct-database local/test environments still share one
 connection because no query-result cache is present.
-`nodejs_compat_v2` is required for `pg`.
+`nodejs_compat` is required for `pg` (provides Node built-ins such as
+`fs`/`dns` that `pg-connection-string` imports).
 
 Account for total origin connections across both Hyperdrive configs when
 tuning pool sizes (Worker uses short-lived per-request pools: cached max 3,

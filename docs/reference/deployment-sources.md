@@ -15,7 +15,7 @@
 - Connect to external PostgreSQL from Workers via **Hyperdrive**; do not open
   raw origin connections.
 - Hyperdrive requires Node.js compatibility. The Wrangler docs show
-  `"compatibility_flags": ["nodejs_compat_v2"]` with a `hyperdrive` binding
+  `"compatibility_flags": ["nodejs_compat"]` with a `hyperdrive` binding
   `{ binding, id }`.
 - Set a recent `compatibility_date`. Generate `Env` types with `wrangler types`
   after config changes; never hand-write bindings. Store secrets with
@@ -27,7 +27,7 @@
 ### Project decision
 
 - API deploys as a Worker using `deploy/cloudflare/wrangler.api.jsonc`
-  (`nodejs_compat_v2`, Hyperdrive bindings `HYPERDRIVE` +
+  (`nodejs_compat`, Hyperdrive bindings `HYPERDRIVE` +
   `HYPERDRIVE_CACHE_DISABLED`, `observability`).
 - Frontend deploys to Pages (build `apps/web`, publish `apps/web/dist`).
 - `BETTER_AUTH_SECRET` is a Worker secret; `BASE_URL` is a Worker var, never

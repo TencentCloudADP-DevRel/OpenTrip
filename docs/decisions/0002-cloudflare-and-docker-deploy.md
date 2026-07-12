@@ -16,7 +16,7 @@ TCP pools efficiently without help.
   `src/node-server.ts` (`@hono/node-server`) both compose the same
   application/domain/infrastructure code.
 - **Cloudflare**: frontend on Pages, API on Workers with
-  `nodejs_compat_v2`, and **Hyperdrive** fronting the external PostgreSQL. The
+  `nodejs_compat`, and **Hyperdrive** fronting the external PostgreSQL. The
   DB connection string comes from the Hyperdrive binding.
 - **Docker**: `postgres` + `api` + `web` services; the API connects with a plain
   `DATABASE_URL`.
