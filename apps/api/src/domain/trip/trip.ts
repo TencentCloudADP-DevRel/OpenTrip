@@ -491,6 +491,12 @@ export class Trip {
     return expense;
   }
 
+  /** Keep the in-memory write echo aligned with the repository's atomic
+   * `version = version + 1` update. */
+  private markChanged(): void {
+    this.snapshot.version += 1;
+  }
+
   /** Add the member to the stop's votes if absent, else remove. Idempotent. */
   toggleVote(stopId: string, memberId: string): void {
     this.requireMember(memberId);
@@ -498,6 +504,7 @@ export class Trip {
     stop.votes = stop.votes.includes(memberId)
       ? stop.votes.filter((v) => v !== memberId)
       : [...stop.votes, memberId];
+    this.markChanged();
   }
 
   /**
@@ -515,6 +522,7 @@ export class Trip {
       { author: memberId, timeLabel: "Just now", text: trimmed },
       ...stop.comments,
     ];
+    this.markChanged();
   }
 
   /** Insert a stop at a position within a day, interpolating coordinates. */
@@ -599,6 +607,8 @@ export class Trip {
     all.splice(pos, 0, stop);
     all.forEach((s, i) => (s.order = i));
 
+    this.markChanged();
+
     return stop;
   }
 
@@ -632,6 +642,8 @@ export class Trip {
 
     if (draft.note !== undefined) stop.note = draft.note.trim();
 
+    this.markChanged();
+
     return stop;
   }
 
@@ -660,6 +672,7 @@ export class Trip {
     rest.splice(pos, 0, stop);
     rest.forEach((s, i) => (s.order = i));
     this.snapshot.stops = rest;
+    this.markChanged();
     return stop;
   }
 
@@ -686,6 +699,7 @@ export class Trip {
       createdOrder: this.snapshot.expenses.length,
     };
     this.snapshot.expenses.push(expense);
+    this.markChanged();
     return expense;
   }
 
@@ -708,6 +722,7 @@ export class Trip {
     expense.currency = draft.currency?.trim() || this.snapshot.currency;
     expense.category = draft.category ?? "Plan";
     expense.participants = [...draft.participants];
+    this.markChanged();
     return expense;
   }
 
@@ -716,11 +731,13 @@ export class Trip {
     const trimmed = title.trim();
     if (!trimmed) throw new DomainError("empty_trip_title", "Trip title is required");
     this.snapshot.title = trimmed;
+    this.markChanged();
   }
 
   /** Clear the one-shot agent seed flag after the first @agent message is sent. */
   clearAgentSeedPending(): void {
     this.snapshot.agentSeedPending = false;
+    this.markChanged();
   }
 
   /** Persist geocoded destination center onto intake (no-op when already set). */
@@ -741,6 +758,7 @@ export class Trip {
       destinationLat: lat,
       destinationLng: lng,
     };
+    this.markChanged();
     return true;
   }
 
@@ -757,6 +775,7 @@ export class Trip {
       color: dayColorFor(nextNumber),
     };
     this.snapshot.days.push(day);
+    this.markChanged();
     return day;
   }
 
@@ -773,6 +792,7 @@ export class Trip {
       }
       day.color = normalized;
     }
+    this.markChanged();
     return day;
   }
 
@@ -804,6 +824,7 @@ export class Trip {
       .map((s) => ({ ...s, day: oldToNew.get(s.day)! }))
       .sort((a, b) => a.day - b.day || a.order - b.order)
       .map((s, i) => ({ ...s, order: i }));
+    this.markChanged();
   }
 
   /** Reorder the itinerary to the given sequence of existing day numbers.
@@ -844,6 +865,7 @@ export class Trip {
       .map((s) => ({ ...s, day: oldToNew.get(s.day) ?? s.day }))
       .sort((a, b) => a.day - b.day || a.order - b.order)
       .map((s, i) => ({ ...s, order: i }));
+    this.markChanged();
   }
 
   /** The member flagged as the current user (demo mapping). */
@@ -918,6 +940,7 @@ export class Trip {
       isCurrentUser: false,
     };
     this.snapshot.members.push(member);
+    this.markChanged();
     return member;
   }
 }

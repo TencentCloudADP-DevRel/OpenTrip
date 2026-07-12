@@ -2,6 +2,12 @@ import { createContainer } from "./infrastructure/composition/container";
 import { loadConfig, type RawEnv } from "./infrastructure/config";
 import { createWorkerStorage } from "./infrastructure/storage/create-worker-storage";
 import { createApp } from "./interfaces/http/app";
+import {
+  CloudflareTripChangePublisher,
+  signRealtimeGrant,
+  TripRealtimeObject,
+  type DurableObjectNamespaceLike,
+} from "./infrastructure/realtime";
 
 interface WorkerEnv extends RawEnv {
   /** Optional Hyperdrive binding (query cache enabled). Prefer when available. */
@@ -16,6 +22,8 @@ interface WorkerEnv extends RawEnv {
   BETTER_AUTH_SECRET: string;
   TRUSTED_ORIGINS?: string;
   BASE_URL?: string;
+  TRIP_REALTIME: DurableObjectNamespaceLike;
+  REALTIME_GRANT_SECRET: string;
 }
 
 /** Minimal ExecutionContext so we do not depend on ambient Workers types. */
@@ -39,7 +47,7 @@ function resolveFreshConnectionString(
   return cached;
 }
 
-function buildApp(env: WorkerEnv) {
+function buildApp(env: WorkerEnv, ctx: WorkerExecutionContext) {
   const connectionString = resolveConnectionString(env);
   const freshDatabaseUrl = resolveFreshConnectionString(env, connectionString);
   const config = loadConfig(env, connectionString);
@@ -54,9 +62,67 @@ function buildApp(env: WorkerEnv) {
       poolMax: dualPools ? 3 : 5,
       poolMaxFresh: 2,
       freshDatabaseUrl,
+      tripChangePublisher: new CloudflareTripChangePublisher(
+        env.TRIP_REALTIME,
+        env.REALTIME_GRANT_SECRET,
+        (task) => ctx.waitUntil(task),
+      ),
     },
   );
   return { app: createApp(container), container };
+}
+
+export async function handleRealtimeUpgrade(
+  request: Request,
+  env: WorkerEnv,
+  container: ReturnType<typeof buildApp>["container"],
+): Promise<Response | null> {
+  const url = new URL(request.url);
+  const match = url.pathname.match(/^\/api\/trips\/([^/]+)\/realtime$/);
+  if (!match) return null;
+  if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
+    return new Response("Expected WebSocket", { status: 426 });
+  }
+  const origin = request.headers.get("Origin") ?? "";
+  if (!origin || !container.config.trustedOrigins.includes(origin)) {
+    return new Response("Untrusted origin", { status: 403 });
+  }
+  const session = await container.auth.api.getSession({ headers: request.headers });
+  if (!session) return new Response("Sign in required", { status: 401 });
+
+  const tripId = decodeURIComponent(match[1]!);
+  let trip;
+  try {
+    trip = await container.tripService.getTrip(tripId, session.user.id);
+  } catch {
+    return new Response("Trip not found", { status: 404 });
+  }
+  const member =
+    trip.members.find((candidate) => candidate.userId === session.user.id) ??
+    trip.members.find((candidate) => candidate.isCurrentUser);
+  if (!member) return new Response("Trip not found", { status: 404 });
+
+  const grant = await signRealtimeGrant(
+    {
+      connectionId: crypto.randomUUID(),
+      tripId,
+      userId: session.user.id,
+      name: session.user.name || session.user.email,
+      image: session.user.image ?? null,
+      role: member.role,
+    },
+    env.REALTIME_GRANT_SECRET,
+  );
+  const internalUrl = new URL("https://trip-realtime.internal/connect");
+  internalUrl.searchParams.set("tripId", tripId);
+  return env.TRIP_REALTIME.getByName(tripId).fetch(
+    new Request(internalUrl, {
+      headers: {
+        Authorization: `Bearer ${grant}`,
+        Upgrade: "websocket",
+      },
+    }),
+  );
 }
 
 /**
@@ -113,8 +179,10 @@ export default {
     // Hyperdrive still pools TCP to the origin at the edge; caching a
     // node-postgres Pool across isolate freezes left connections "pending"
     // forever → CF hang cancel (1101) which browsers report as CORS.
-    const { app, container } = buildApp(env);
+    const { app, container } = buildApp(env, ctx);
     try {
+      const realtime = await handleRealtimeUpgrade(request, env, container);
+      if (realtime) return realtime;
       return await app.fetch(request);
     } catch (err) {
       console.error("Worker fetch failed:", err);
@@ -136,3 +204,5 @@ export default {
     }
   },
 };
+
+export { TripRealtimeObject };

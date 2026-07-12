@@ -32,6 +32,7 @@ import { Tabs } from "@/shared/ui/tabs";
 import { Splitter, clamp } from "@/shared/ui/splitter";
 import { toastManager } from "@/shared/ui/toast";
 import { useTripActions } from "./model/useTripActions";
+import { useTripRealtime } from "./model/useTripRealtime";
 import { useAgentEvents } from "./model/useAgentEvents";
 import { Sidebar } from "./ui/Sidebar";
 import { AgentToggle } from "./ui/agent/AgentToggle";
@@ -75,6 +76,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
     queryFn: () => fetchTrip(tripId),
   });
   const actions = useTripActions(tripId);
+  const realtime = useTripRealtime(tripId, Boolean(trip));
 
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const previousSidebarWidthRef = useRef(DEFAULT_SIDEBAR_WIDTH);
@@ -665,6 +667,7 @@ export function TravelPlannerPage({ tripId }: { tripId: string }) {
               tripId={trip.id}
               members={trip.members}
               canInvite={trip.permissions.canInvite}
+              onlineUserIds={realtime.presence.map((member) => member.userId)}
             />
           )}
       </main>

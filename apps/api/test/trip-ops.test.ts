@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PendingPatch } from "../src/domain/agent";
 import { Trip } from "../src/domain/trip";
 import type { TripRepository } from "../src/domain/trip";
+import type { TripChangePublisher } from "../src/domain/realtime";
 import { seedTrips } from "../src/infrastructure/persistence/seed-data";
 import {
   applyTripOp,
@@ -129,6 +130,31 @@ describe("trip ops catalog", () => {
       summary: 'Renamed trip to "New Title"',
     });
     expect(trip.toSnapshot().title).toBe("New Title");
+  });
+
+  it("publishes an invalidation after an approved agent write", async () => {
+    const trip = freshTrip();
+    const changes: Parameters<TripChangePublisher["publish"]>[0][] = [];
+    const result = await applyTripOp(
+      {
+        ...ctx(trip),
+        tripChangePublisher: {
+          async publish(change) {
+            changes.push(change);
+          },
+        },
+      },
+      { kind: "rename_trip", title: "Realtime title" },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(changes).toEqual([
+      expect.objectContaining({
+        tripId: trip.id,
+        revision: trip.toSnapshot().version,
+        scopes: ["trip"],
+      }),
+    ]);
   });
 
   it("toPatch maps tool args for every write op without throwing", () => {

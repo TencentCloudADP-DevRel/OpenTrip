@@ -8,6 +8,7 @@ import type {
   PendingPatch,
 } from "../../domain/agent";
 import type { Trip, TripRepository } from "../../domain/trip";
+import type { TripChangePublisher } from "../../domain/realtime";
 import { AGENT_COMMENT_AUTHOR } from "../../domain/trip";
 import { ForbiddenError } from "../use-cases";
 import { toTripDto, type TripDto } from "../dto";
@@ -98,6 +99,7 @@ export class AgentService {
     private sessionRepo: AgentSessionRepository,
     private model: AgentModel,
     private options: AgentServiceOptions,
+    private tripChangePublisher: TripChangePublisher | null = null,
   ) {}
 
   private async load(tripId: string): Promise<Trip> {
@@ -610,7 +612,12 @@ export class AgentService {
   /** Run the pending patch via the trip ops catalog (domain + repository). */
   private applyPatch(trip: Trip, patch: PendingPatch, actorUserId: string) {
     return applyTripOp(
-      { trip, actorUserId, tripRepo: this.tripRepo },
+      {
+        trip,
+        actorUserId,
+        tripRepo: this.tripRepo,
+        tripChangePublisher: this.tripChangePublisher,
+      },
       patch,
     );
   }

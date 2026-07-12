@@ -14,6 +14,11 @@ import {
 } from "../domain/trip";
 import { toTripDto, type TripDto } from "./dto";
 import type { GeoService } from "./geo/geo-service";
+import {
+  createTripChange,
+  type TripChangePublisher,
+  type TripChangeScope,
+} from "../domain/realtime";
 
 /** Thrown when a user tries to act on a trip they cannot access or mutate. */
 export class ForbiddenError extends Error {
@@ -33,7 +38,37 @@ export class TripService {
     private repo: TripRepository,
     private coverImages: CoverImageProvider | null = null,
     private geo: GeoService | null = null,
+    private changes: TripChangePublisher | null = null,
   ) {}
+
+  /** Realtime is an invalidation hint after a committed write. A transport
+   * outage must not turn an already-committed mutation into an HTTP failure. */
+  private async publishChange(
+    trip: Trip,
+    actorId: string,
+    scopes: readonly TripChangeScope[],
+  ): Promise<void> {
+    if (!this.changes) return;
+    const snapshot = trip.toSnapshot();
+    try {
+      await this.changes.publish(
+        createTripChange({
+          eventId: crypto.randomUUID(),
+          tripId: snapshot.id,
+          revision: snapshot.version,
+          actorId,
+          occurredAt: new Date().toISOString(),
+          scopes,
+        }),
+      );
+    } catch (error) {
+      console.error("Failed to publish realtime trip change", {
+        tripId: snapshot.id,
+        revision: snapshot.version,
+        error,
+      });
+    }
+  }
 
   private async load(tripId: string): Promise<Trip> {
     const trip = await this.repo.findById(tripId);
@@ -118,6 +153,7 @@ export class TripService {
     const trip = await this.loadEditable(tripId, userId);
     trip.rename(title);
     await this.repo.rename(tripId, trip.toSnapshot().title);
+    await this.publishChange(trip, userId, ["trip"]);
     return toTripDto(trip, userId);
   }
 
@@ -130,6 +166,7 @@ export class TripService {
     if (trip.toSnapshot().agentSeedPending) {
       trip.clearAgentSeedPending();
       await this.repo.clearAgentSeedPending(tripId);
+      await this.publishChange(trip, userId, ["trip"]);
     }
     return toTripDto(trip, userId);
   }
@@ -138,6 +175,7 @@ export class TripService {
     const trip = await this.loadEditable(tripId, userId);
     const day = trip.addDay();
     await this.repo.addDay(tripId, day);
+    await this.publishChange(trip, userId, ["days"]);
     return toTripDto(trip, userId);
   }
 
@@ -150,6 +188,7 @@ export class TripService {
     const trip = await this.loadEditable(tripId, userId);
     const day = trip.updateDay(dayNumber, draft);
     await this.repo.updateDay(tripId, day);
+    await this.publishChange(trip, userId, ["days"]);
     return toTripDto(trip, userId);
   }
 
@@ -161,6 +200,7 @@ export class TripService {
     const trip = await this.loadEditable(tripId, userId);
     trip.reorderDays(order);
     await this.repo.reorderDays(trip);
+    await this.publishChange(trip, userId, ["days", "stops"]);
     return toTripDto(trip, userId);
   }
 
@@ -172,6 +212,7 @@ export class TripService {
     const trip = await this.loadEditable(tripId, userId);
     trip.deleteDay(dayNumber);
     await this.repo.deleteDay(trip);
+    await this.publishChange(trip, userId, ["days", "stops"]);
     return toTripDto(trip, userId);
   }
 
@@ -215,6 +256,7 @@ export class TripService {
     const trip = await this.loadEditable(tripId, userId);
     trip.insertStop(draft, trip.actingMemberId(userId));
     await this.repo.save(trip);
+    await this.publishChange(trip, userId, ["stops"]);
     return toTripDto(trip, userId);
   }
 
@@ -227,6 +269,7 @@ export class TripService {
     const trip = await this.loadEditable(tripId, userId);
     trip.updateStop(stopId, draft);
     await this.repo.save(trip);
+    await this.publishChange(trip, userId, ["stops"]);
     return toTripDto(trip, userId);
   }
 
@@ -238,6 +281,7 @@ export class TripService {
     const trip = await this.loadEditable(tripId, userId);
     trip.moveStop(draft);
     await this.repo.save(trip);
+    await this.publishChange(trip, userId, ["stops"]);
     return toTripDto(trip, userId);
   }
 
@@ -249,6 +293,7 @@ export class TripService {
     const trip = await this.loadEditable(tripId, userId);
     trip.toggleVote(stopId, trip.actingMemberId(userId));
     await this.repo.save(trip);
+    await this.publishChange(trip, userId, ["stops"]);
     return toTripDto(trip, userId);
   }
 
@@ -261,6 +306,7 @@ export class TripService {
     const trip = await this.loadEditable(tripId, userId);
     trip.addComment(stopId, trip.actingMemberId(userId), text);
     await this.repo.save(trip);
+    await this.publishChange(trip, userId, ["stops", "comments"]);
     return toTripDto(trip, userId);
   }
 
@@ -272,6 +318,7 @@ export class TripService {
     const trip = await this.loadEditable(tripId, userId);
     trip.addExpense(draft);
     await this.repo.save(trip);
+    await this.publishChange(trip, userId, ["expenses"]);
     return toTripDto(trip, userId);
   }
 
@@ -284,6 +331,7 @@ export class TripService {
     const trip = await this.loadEditable(tripId, userId);
     trip.updateExpense(expenseId, draft);
     await this.repo.save(trip);
+    await this.publishChange(trip, userId, ["expenses"]);
     return toTripDto(trip, userId);
   }
 }

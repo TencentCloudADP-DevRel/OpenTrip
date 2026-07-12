@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type { PendingPatch } from "../../../domain/agent";
 import type { Trip, TripRepository } from "../../../domain/trip";
+import type { TripChangePublisher } from "../../../domain/realtime";
 import {
   addDayPatchSchema,
   addDayToolSchema,
@@ -29,6 +30,7 @@ export interface TripOpContext {
   trip: Trip;
   actorUserId: string;
   tripRepo: TripRepository;
+  tripChangePublisher?: TripChangePublisher | null;
 }
 
 /**

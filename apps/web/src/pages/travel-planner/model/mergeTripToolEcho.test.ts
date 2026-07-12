@@ -36,6 +36,7 @@ function trip(partial: Partial<Trip> & Pick<Trip, "days" | "stops">): Trip {
     title: "Trip",
     status: "planning",
     currency: "USD",
+    version: 0,
     startDate: "2026-07-01",
     coverUrl: null,
     intake: null,

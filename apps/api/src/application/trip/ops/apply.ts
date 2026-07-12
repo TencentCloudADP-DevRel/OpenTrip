@@ -1,4 +1,8 @@
 import type { PendingPatch } from "../../../domain/agent";
+import {
+  createTripChange,
+  type TripChangeScope,
+} from "../../../domain/realtime";
 import { getTripOp, type TripOpContext } from "./catalog";
 
 export type TripOpApplyResult =
@@ -23,10 +27,51 @@ export async function applyTripOp(
       c: TripOpContext,
       p: PendingPatch,
     ) => Promise<string>)(ctx, patch);
+    if (ctx.tripChangePublisher) {
+      const snapshot = ctx.trip.toSnapshot();
+      try {
+        await ctx.tripChangePublisher.publish(
+          createTripChange({
+            eventId: crypto.randomUUID(),
+            tripId: snapshot.id,
+            revision: snapshot.version,
+            actorId: ctx.actorUserId,
+            occurredAt: new Date().toISOString(),
+            scopes: scopesFor(patch.kind),
+          }),
+        );
+      } catch (error) {
+        console.error("Failed to publish agent trip change", {
+          tripId: snapshot.id,
+          revision: snapshot.version,
+          error,
+        });
+      }
+    }
     return { ok: true, summary };
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Failed to apply trip change";
     return { ok: false, error: message };
+  }
+}
+
+function scopesFor(kind: PendingPatch["kind"]): TripChangeScope[] {
+  switch (kind) {
+    case "rename_trip":
+      return ["trip"];
+    case "add_day":
+    case "update_day":
+      return ["days"];
+    case "delete_day":
+    case "reorder_days":
+      return ["days", "stops"];
+    case "insert_stop":
+    case "update_stop":
+    case "move_stop":
+      return ["stops"];
+    case "add_expense":
+    case "update_expense":
+      return ["expenses"];
   }
 }

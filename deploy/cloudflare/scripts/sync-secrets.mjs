@@ -30,6 +30,7 @@ const defaultSecretsPath = resolve(cloudflareDir, ".secrets.local.json");
 const SECRET_KEYS = [
   "DATABASE_URL",
   "BETTER_AUTH_SECRET",
+  "REALTIME_GRANT_SECRET",
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
   "S3_ACCESS_KEY_ID",

@@ -8,6 +8,10 @@ import {
   type TripInviteSnapshot,
 } from "../domain/invite";
 import type { TripRepository } from "../domain/trip";
+import {
+  createTripChange,
+  type TripChangePublisher,
+} from "../domain/realtime";
 import { toTripDto, type TripDto } from "./dto";
 
 /** The user redeeming or creating an invite. */
@@ -67,6 +71,7 @@ export class TripInviteService {
   constructor(
     private invites: TripInviteRepository,
     private trips: TripRepository,
+    private changes: TripChangePublisher | null = null,
   ) {}
 
   private async loadTrip(tripId: string) {
@@ -207,6 +212,26 @@ export class TripInviteService {
     });
     await this.trips.addMember(invite.tripId, member);
     await this.invites.recordAcceptance(invite.id, actor.id);
+    if (this.changes) {
+      try {
+        await this.changes.publish(
+          createTripChange({
+            eventId: crypto.randomUUID(),
+            tripId: invite.tripId,
+            revision: trip.toSnapshot().version,
+            actorId: actor.id,
+            occurredAt: new Date().toISOString(),
+            scopes: ["members"],
+          }),
+        );
+      } catch (error) {
+        console.error("Failed to publish trip membership change", {
+          tripId: invite.tripId,
+          revision: trip.toSnapshot().version,
+          error,
+        });
+      }
+    }
     return { trip: toTripDto(trip, actor.id), joined: true };
   }
 

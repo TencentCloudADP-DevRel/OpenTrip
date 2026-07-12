@@ -72,6 +72,8 @@ export interface Trip {
   title: string;
   status: TripStatus;
   currency: string;
+  /** Monotonic server revision for realtime and offline conflict detection. */
+  version: number;
   /** ISO `YYYY-MM-DD` start date, or "" when unknown. Day calendar dates are
    * derived from this by offsetting each day by (number - 1). */
   startDate: string;

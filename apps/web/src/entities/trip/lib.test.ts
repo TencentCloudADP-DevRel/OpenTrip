@@ -8,6 +8,7 @@ function trip(id: string, title: string): Trip {
     title,
     status: "planning",
     currency: "JPY",
+    version: 0,
     startDate: "2026-07-11",
     coverUrl: null,
     intake: null,

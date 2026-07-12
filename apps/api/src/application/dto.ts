@@ -6,6 +6,8 @@ export interface TripDto {
   title: string;
   status: string;
   currency: string;
+  /** Monotonic aggregate revision used by realtime and offline conflict checks. */
+  version: number;
   /** ISO `YYYY-MM-DD` start date, or "" when unknown. */
   startDate: string;
   /** Optional cover image URL for the trips list card. */
@@ -63,6 +65,7 @@ export function toTripDto(trip: Trip, currentUserId: string): TripDto {
     title: s.title,
     status: s.status,
     currency: s.currency,
+    version: s.version,
     startDate: s.startDate,
     coverUrl: s.coverUrl,
     intake: s.intake,

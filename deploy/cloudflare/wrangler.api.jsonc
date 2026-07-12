@@ -4,7 +4,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "opentrip-api",
   "main": "../../apps/api/src/worker.ts",
-  "compatibility_date": "2025-01-01",
+  "compatibility_date": "2026-04-07",
   // pg / mysql2 + Better Auth need Node built-ins on Workers.
   "compatibility_flags": ["nodejs_compat_v2"],
   // Account comes from CLOUDFLARE_ACCOUNT_ID (Actions secret / local env).
@@ -13,6 +13,20 @@
   "observability": {
     "enabled": true
   },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "TRIP_REALTIME",
+        "class_name": "TripRealtimeObject"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1-trip-realtime",
+      "new_sqlite_classes": ["TripRealtimeObject"]
+    }
+  ],
   // Custom domain for the API (zone opentrip.im is on this account).
   "routes": [
     {

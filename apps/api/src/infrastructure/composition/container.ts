@@ -27,6 +27,7 @@ import { AirbnbLodgingProvider } from "../lodging/airbnb-provider";
 import { AiSdkAgentModel } from "../ai/agent-model.ai-sdk";
 import { UnsplashCoverProvider } from "../cover/unsplash-cover-provider";
 import type { AppConfig } from "../config";
+import type { TripChangePublisher } from "../../domain/realtime";
 
 export interface CreateContainerOptions {
   /**
@@ -46,6 +47,8 @@ export interface CreateContainerOptions {
    * `config.databaseUrl`, a single shared pool is used (Node/direct DB).
    */
   freshDatabaseUrl?: string;
+  /** Cloudflare Durable Object publisher. Omitted outside the Worker runtime. */
+  tripChangePublisher?: TripChangePublisher;
 }
 
 export interface Container {
@@ -129,10 +132,16 @@ export function createContainer(
   });
   const coverImages = new UnsplashCoverProvider(config.unsplashAccessKey);
   const geoService = new GeoService(createGeoProvider(config.geo));
-  const tripService = new TripService(tripRepository, coverImages, geoService);
+  const tripService = new TripService(
+    tripRepository,
+    coverImages,
+    geoService,
+    options?.tripChangePublisher ?? null,
+  );
   const tripInviteService = new TripInviteService(
     new SqlTripInviteRepository(poolFresh),
     tripRepository,
+    options?.tripChangePublisher ?? null,
   );
   const preferenceService = new PreferenceService(
     new SqlUserPreferenceRepository(poolFresh),
@@ -162,6 +171,7 @@ export function createContainer(
         {
           proactiveThreshold: config.ai.proactiveThreshold,
         },
+        options?.tripChangePublisher ?? null,
       )
     : null;
 

@@ -418,6 +418,7 @@ export class SqlTripRepository implements TripRepository {
       member.role,
       member.canInvite,
     ]);
+    await bumpVersion(this.db, tripId);
   }
 
   async rename(id: string, title: string): Promise<void> {
