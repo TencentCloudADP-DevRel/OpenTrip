@@ -10,13 +10,17 @@ import {
   NavigationControl,
   Popup,
 } from "maplibre-gl";
-import { gradientAvatarUrl } from "@/shared/lib";
+import { reversePlace } from "@/shared/api";
 import type { MapStop, SearchResult, UserLocationAvatar } from "./types";
 import { SearchPopup } from "./SearchPopup";
+import { UserLocationMarker } from "./UserLocationMarker";
 import "./map.css";
 
 const STYLE_URL =
   "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+
+/** ~45m — only reverse-geocode again after a meaningful move. */
+const REVERSE_DELTA = 0.0004;
 
 export interface TripMapProps {
   stops: MapStop[];
@@ -44,31 +48,6 @@ export interface TripMapProps {
    * Starts geolocation if needed; otherwise flies to the last known position.
    */
   locateSignal?: number;
-}
-
-function createUserLocationElement(
-  avatar: UserLocationAvatar,
-  label: string,
-  onActivate: () => void,
-): HTMLButtonElement {
-  const el = document.createElement("button");
-  el.type = "button";
-  el.className = "trip-map-user-location";
-  el.setAttribute("aria-label", label);
-  el.title = label;
-
-  const img = document.createElement("img");
-  img.src = avatar.src || gradientAvatarUrl(avatar.seed);
-  img.alt = "";
-  img.draggable = false;
-  img.style.background = avatar.bg;
-  el.appendChild(img);
-
-  el.addEventListener("click", (ev) => {
-    ev.stopPropagation();
-    onActivate();
-  });
-  return el;
 }
 
 const DEFAULT_CENTER: [number, number] = [0, 20];
@@ -117,14 +96,21 @@ export function TripMap({
   const searchRootRef = useRef<Root | null>(null);
   const geolocateRef = useRef<GeolocateControl | null>(null);
   const userMarkerRef = useRef<Marker | null>(null);
+  const userRootRef = useRef<Root | null>(null);
   const lastUserPosRef = useRef<{ lng: number; lat: number } | null>(null);
+  const lastUpdatedAtRef = useRef(0);
+  const placeLabelRef = useRef("");
+  const lastReverseRef = useRef<{ lng: number; lat: number } | null>(null);
+  const reverseAbortRef = useRef<AbortController | null>(null);
   const trackingRef = useRef(false);
   const userAvatarRef = useRef(userAvatar);
   const locateLabelRef = useRef(t("map.locate"));
   const locateUserRef = useRef<() => void>(() => {});
+  const renderUserMarkerRef = useRef<() => void>(() => {});
   const ensureUserMarkerRef = useRef<(lng: number, lat: number) => void>(
     () => {},
   );
+  const clearUserMarkerRef = useRef<() => void>(() => {});
   const [failed, setFailed] = useState(false);
   selectRef.current = onSelectStop;
   pickRef.current = onPick;
@@ -133,6 +119,41 @@ export function TripMap({
   fallbackCenterRef.current = fallbackCenter;
   userAvatarRef.current = userAvatar;
   locateLabelRef.current = t("map.locate");
+
+  clearUserMarkerRef.current = () => {
+    reverseAbortRef.current?.abort();
+    reverseAbortRef.current = null;
+    userRootRef.current?.unmount();
+    userRootRef.current = null;
+    userMarkerRef.current?.remove();
+    userMarkerRef.current = null;
+    lastUserPosRef.current = null;
+    lastUpdatedAtRef.current = 0;
+    placeLabelRef.current = "";
+    lastReverseRef.current = null;
+  };
+
+  renderUserMarkerRef.current = () => {
+    const avatar = userAvatarRef.current;
+    const root = userRootRef.current;
+    if (!avatar || !root) return;
+    root.render(
+      <UserLocationMarker
+        avatar={avatar}
+        placeLabel={
+          placeLabelRef.current || t("map.location.resolving")
+        }
+        updatedAt={lastUpdatedAtRef.current || Date.now()}
+        locateLabel={locateLabelRef.current}
+        updatedNowLabel={t("map.location.now")}
+        updatedMinutesLabel={(count) =>
+          t("map.location.minutesAgo", { count })
+        }
+        updatedHoursLabel={(count) => t("map.location.hoursAgo", { count })}
+        onActivate={() => locateUserRef.current()}
+      />,
+    );
+  };
 
   // Stable callbacks for the one-shot map boot + Marker click handlers.
   locateUserRef.current = () => {
@@ -155,21 +176,51 @@ export function TripMap({
 
   ensureUserMarkerRef.current = (lng, lat) => {
     lastUserPosRef.current = { lng, lat };
+    lastUpdatedAtRef.current = Date.now();
     const map = mapRef.current;
     const avatar = userAvatarRef.current;
     if (!map || !avatar || !readyRef.current) return;
 
-    if (userMarkerRef.current) {
+    if (!userMarkerRef.current) {
+      const el = document.createElement("div");
+      el.className = "trip-map-user-location-host";
+      userRootRef.current = createRoot(el);
+      userMarkerRef.current = new Marker({ element: el, anchor: "center" })
+        .setLngLat([lng, lat])
+        .addTo(map);
+    } else {
       userMarkerRef.current.setLngLat([lng, lat]);
-      return;
     }
 
-    const el = createUserLocationElement(avatar, locateLabelRef.current, () =>
-      locateUserRef.current(),
-    );
-    userMarkerRef.current = new Marker({ element: el, anchor: "center" })
-      .setLngLat([lng, lat])
-      .addTo(map);
+    renderUserMarkerRef.current();
+
+    const prev = lastReverseRef.current;
+    const moved =
+      !prev ||
+      Math.abs(prev.lng - lng) > REVERSE_DELTA ||
+      Math.abs(prev.lat - lat) > REVERSE_DELTA;
+    if (!moved) return;
+
+    lastReverseRef.current = { lng, lat };
+    reverseAbortRef.current?.abort();
+    const ac = new AbortController();
+    reverseAbortRef.current = ac;
+    const lang = i18n.language.startsWith("zh") ? "zh" : "en";
+    void reversePlace(lat, lng, lang)
+      .then((place) => {
+        if (ac.signal.aborted) return;
+        placeLabelRef.current = place
+          ? place.label
+          : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        renderUserMarkerRef.current();
+      })
+      .catch(() => {
+        if (ac.signal.aborted) return;
+        if (!placeLabelRef.current) {
+          placeLabelRef.current = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          renderUserMarkerRef.current();
+        }
+      });
   };
 
   useEffect(() => {
@@ -244,9 +295,7 @@ export function TripMap({
         return;
       }
       trackingRef.current = false;
-      userMarkerRef.current?.remove();
-      userMarkerRef.current = null;
-      lastUserPosRef.current = null;
+      clearUserMarkerRef.current();
     });
 
     map.on("error", () => setFailed(true));
@@ -286,11 +335,9 @@ export function TripMap({
     });
     mapRef.current = map;
     return () => {
-      userMarkerRef.current?.remove();
-      userMarkerRef.current = null;
+      clearUserMarkerRef.current();
       geolocateRef.current = null;
       trackingRef.current = false;
-      lastUserPosRef.current = null;
       map.remove();
       mapRef.current = null;
       readyRef.current = false;
@@ -389,14 +436,11 @@ export function TripMap({
     syncRef.current();
   }, [stops, day, activeStopId, searchResult, fallbackCenter]);
 
-  // Refresh avatar marker when the current user identity changes.
+  // Refresh avatar marker when the current user identity or language changes.
   useEffect(() => {
-    const pos = lastUserPosRef.current;
-    if (!pos || !userAvatar) return;
-    userMarkerRef.current?.remove();
-    userMarkerRef.current = null;
-    ensureUserMarkerRef.current(pos.lng, pos.lat);
-  }, [userAvatar]);
+    if (!userMarkerRef.current) return;
+    renderUserMarkerRef.current();
+  }, [userAvatar, i18n.language, t]);
 
   // External locate request (FloatingMembers avatar click, etc.).
   useEffect(() => {
@@ -411,18 +455,12 @@ export function TripMap({
     const btn = containerRef.current?.querySelector(
       ".maplibregl-ctrl-geolocate",
     ) as HTMLButtonElement | null;
-    if (btn) {
-      btn.title = label;
-      btn.setAttribute("aria-label", label);
-      if (btn.disabled || btn.getAttribute("aria-disabled") === "true") {
-        btn.title = unavailable;
-        btn.setAttribute("aria-label", unavailable);
-      }
-    }
-    const markerBtn = userMarkerRef.current?.getElement();
-    if (markerBtn instanceof HTMLButtonElement) {
-      markerBtn.title = label;
-      markerBtn.setAttribute("aria-label", label);
+    if (!btn) return;
+    btn.title = label;
+    btn.setAttribute("aria-label", label);
+    if (btn.disabled || btn.getAttribute("aria-disabled") === "true") {
+      btn.title = unavailable;
+      btn.setAttribute("aria-label", unavailable);
     }
   }, [i18n.language, t]);
 

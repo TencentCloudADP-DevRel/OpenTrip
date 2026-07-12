@@ -56,7 +56,14 @@
   animation: none !important;
 }
 
+.trip-map-user-location-host {
+  width: 32px;
+  height: 32px;
+  line-height: 0;
+}
+
 .trip-map-user-location {
+  display: block;
   width: 32px;
   height: 32px;
   padding: 0;
@@ -73,12 +80,14 @@
   transition: transform var(--dur-base) cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.trip-map-user-location:hover {
-  transform: scale(1.08);
+@media (hover: hover) and (pointer: fine) {
+  .trip-map-user-location:hover {
+    transform: scale(1.08);
+  }
 }
 
 .trip-map-user-location:active {
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 
 .trip-map-user-location img {

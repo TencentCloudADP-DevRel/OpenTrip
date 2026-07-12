@@ -48,9 +48,11 @@ MapLibre `GeolocateControl` sits under the zoom controls (mapcn-style
 tracks the user with `watchPosition` while active.
 
 - **Avatar marker**: while tracking, the user's member avatar is shown on the
-  map (custom Marker; default blue dot is disabled). Clicking it recenters
-  without toggling tracking off. Zoom/pan moves the control to background
-  tracking but keeps the avatar visible.
+  map (custom Marker; default blue dot is disabled). Hover shows a tooltip with
+  the user name, reverse-geocoded place, and relative update time
+  (`Just now` / `N min ago`). Clicking the avatar recenters without toggling
+  tracking off. Zoom/pan moves the control to background tracking but keeps the
+  avatar visible.
 - **Locate button**: lives in the same control group as zoom (no separate
   floating tile). Waiting state does not spin the icon.
 - **FloatingMembers**: clicking the current user's avatar switches to the map

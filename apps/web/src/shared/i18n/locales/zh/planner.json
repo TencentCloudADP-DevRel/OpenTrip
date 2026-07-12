@@ -134,7 +134,13 @@
       "addStop": "在此添加地点"
     },
     "locate": "我的位置",
-    "locateUnavailable": "无法获取位置"
+    "locateUnavailable": "无法获取位置",
+    "location": {
+      "resolving": "正在解析地点…",
+      "now": "刚刚",
+      "minutesAgo": "{{count}} 分钟前",
+      "hoursAgo": "{{count}} 小时前"
+    }
   },
   "budget": {
     "total": "行程总计",
