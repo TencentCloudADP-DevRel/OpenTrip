@@ -3,6 +3,7 @@ import { fileURLToPath, URL } from "node:url";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { VitePWA } from "vite-plugin-pwa";
 import { THEME_STORAGE_KEY } from "./src/shared/config/theme";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
@@ -46,6 +47,46 @@ export default defineConfig(({ mode }) => {
             },
             react(),
             tailwindcss(),
+            VitePWA({
+                strategies: "injectManifest",
+                srcDir: "src",
+                filename: "sw.ts",
+                registerType: "prompt",
+                injectRegister: false,
+                manifest: {
+                    name: "OpenTrip",
+                    short_name: "OpenTrip",
+                    description: "Plan trips together, wherever you are.",
+                    theme_color: "#f7f5ef",
+                    background_color: "#f7f5ef",
+                    display: "standalone",
+                    start_url: "/",
+                    scope: "/",
+                    icons: [
+                        {
+                            src: "/pwa-192x192.svg",
+                            sizes: "192x192",
+                            type: "image/svg+xml",
+                            purpose: "any",
+                        },
+                        {
+                            src: "/pwa-512x512.svg",
+                            sizes: "512x512",
+                            type: "image/svg+xml",
+                            purpose: "any",
+                        },
+                        {
+                            src: "/pwa-maskable-512x512.svg",
+                            sizes: "512x512",
+                            type: "image/svg+xml",
+                            purpose: "maskable",
+                        },
+                    ],
+                },
+                injectManifest: {
+                    globPatterns: ["**/*.{js,css,html,svg,woff2}"],
+                },
+            }),
         ],
         resolve: {
             alias: {

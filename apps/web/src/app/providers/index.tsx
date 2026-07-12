@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/shared/ui/tooltip";
 import { AnchoredToastProvider, ToastProvider } from "@/shared/ui/toast";
 import { SettingsProvider } from "@/features/settings";
 import { subscribeToThemeChanges } from "@/features/toggle-theme";
+import { PwaLifecycle } from "./PwaLifecycle";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -24,6 +25,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
             <QueryClientProvider client={queryClient}>
                 <TooltipProvider delay={400}>
                     <ToastProvider>
+                        <PwaLifecycle />
                         <AnchoredToastProvider>
                             <SettingsProvider>
                                 <Suspense

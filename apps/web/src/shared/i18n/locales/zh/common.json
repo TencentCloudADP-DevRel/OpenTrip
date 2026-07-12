@@ -1,4 +1,10 @@
 {
+  "pwa": {
+    "offlineReady": "OpenTrip 已可离线使用",
+    "updateReady": "OpenTrip 更新已就绪",
+    "updateDescription": "准备好后刷新，即可使用最新版本。",
+    "updateAction": "更新"
+  },
     "appName": "OpenTrip",
     "tagline": "一起规划旅行，费用一键分摊。",
     "language": "语言",

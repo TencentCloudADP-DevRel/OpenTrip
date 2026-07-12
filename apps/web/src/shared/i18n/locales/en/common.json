@@ -1,4 +1,10 @@
 {
+  "pwa": {
+    "offlineReady": "OpenTrip is ready for offline use",
+    "updateReady": "An OpenTrip update is ready",
+    "updateDescription": "Refresh when you are ready to use the latest version.",
+    "updateAction": "Update"
+  },
     "appName": "OpenTrip",
     "tagline": "Plan trips together, split everything.",
     "language": "Language",
