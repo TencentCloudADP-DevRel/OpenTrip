@@ -15,6 +15,9 @@ import {
   type AgentFilePart,
   type AgentHistory,
   type AgentMessage,
+  type AgentMessagePart,
+  type AgentMessageRole,
+  type AgentMessageSource,
 } from "@/shared/api";
 import { uploadTripMedia } from "@/shared/api/media";
 import { config, queryKeys } from "@/shared/config";
@@ -73,6 +76,69 @@ export function appendAgentMessageToHistory(
   return { ...old, messages: [...old.messages, message] };
 }
 
+/** Write-echo a settled useChat turn into shared history (same ids as the
+ * server persists). Avoids invalidate/refetch racing Workers onFinish. */
+export function mergeLiveMessagesIntoHistory(
+  old: AgentHistory | undefined,
+  live: UIMessage[],
+): AgentHistory {
+  let next = old ?? { messages: [], suggestions: [] };
+  let seq = next.messages.reduce((max, message) => Math.max(max, message.seq), 0);
+  for (const message of live) {
+    if (message.role !== "user" && message.role !== "assistant") continue;
+    if (!liveMessageHasContent(message)) continue;
+    if (next.messages.some((existing) => existing.id === message.id)) continue;
+    seq += 1;
+    next = {
+      ...next,
+      messages: [...next.messages, liveMessageToAgentMessage(message, seq)],
+    };
+  }
+  return next;
+}
+
+function liveMessageHasContent(message: UIMessage): boolean {
+  return message.parts.some((part) => {
+    if (part.type === "text" || part.type === "reasoning") {
+      return typeof part.text === "string" && part.text.trim().length > 0;
+    }
+    if (part.type === "file") return true;
+    if (isToolUIPart(part)) return true;
+    if (typeof part.type === "string" && part.type.startsWith("data-")) {
+      return true;
+    }
+    return false;
+  });
+}
+
+function liveMessageToAgentMessage(
+  message: UIMessage,
+  seq: number,
+): AgentMessage {
+  const role = message.role as AgentMessageRole;
+  const text = message.parts
+    .filter(
+      (part): part is { type: "text"; text: string } =>
+        part.type === "text" && typeof part.text === "string",
+    )
+    .map((part) => part.text)
+    .join("\n");
+  const source: AgentMessageSource =
+    role === "user" && MENTION_PATTERN.test(text) ? "mention" : "chat";
+  return {
+    id: message.id,
+    seq,
+    role,
+    parts: message.parts as AgentMessagePart[],
+    // Null actor → AgentMessageItem treats the row as the current member.
+    actorUserId: null,
+    actorName: null,
+    source,
+    mentionedUserIds: [],
+    createdAt: new Date().toISOString(),
+  };
+}
+
 function hasPendingToolApproval(messages: UIMessage[]): boolean {
   return messages.some((m) =>
     m.parts.some(
@@ -119,8 +185,8 @@ function mediaTypeOf(file: File): string {
  * Persisted history lives in a React Query cache (shared across members via
  * polling); `useChat` is the streaming buffer for `@agent` turns and for
  * thread follow-ups (e.g. “确认”) that need write tools + approval.
- * Once a stream settles and no tool is waiting on the user, the history
- * is refetched and the buffer cleared so nothing renders twice. */
+ * On settle, live turns are write-echoed into history (same UIMessage ids the
+ * server persists) and the buffer is cleared — no invalidate/refetch race. */
 export function useAgentChat(tripId: string, enabled: boolean) {
   const queryClient = useQueryClient();
   const streamDebugRef = useRef<{
@@ -186,11 +252,19 @@ export function useAgentChat(tripId: string, enabled: boolean) {
     // Keep the live buffer while a write tool is waiting for Approve/Deny.
     if (hasPendingToolApproval(liveMessages)) return;
     settledRef.current = false;
-    void queryClient
-      .invalidateQueries({ queryKey: queryKeys.agentMessages(tripId) })
-      .then(() => {
-        setMessages([]);
-      });
+
+    // Write-echo the settled turn, then clear useChat. Do not invalidate
+    // history here — Workers onFinish may still be in flight, and a list GET
+    // would wipe the echo (same rule as POST …/agent/messages).
+    void queryClient.cancelQueries({
+      queryKey: queryKeys.agentMessages(tripId),
+    });
+    queryClient.setQueryData(
+      queryKeys.agentMessages(tripId),
+      (old: AgentHistory | undefined) =>
+        mergeLiveMessagesIntoHistory(old, liveMessages),
+    );
+    setMessages([]);
   }, [status, liveMessages, queryClient, tripId, setMessages]);
 
   /** Route input: `@agent` and agent-thread follow-ups stream (write tools);

@@ -276,11 +276,16 @@ actions (AI SDK approval DTO). Chat tool parts render Approve/Deny via
 `POST …/agent/messages`, which returns the inserted `message`; the SPA merges
 it with `setQueryData` so the bubble appears immediately without relying on a
 list GET that may hit a stale Hyperdrive cache (same write-echo rule as trip
-create — [../frontend/data-caching.md](../frontend/data-caching.md)). Approved
-write tools return `{ ok, summary, trip }` (in-memory `TripDto`, not a
-re-`SELECT`); the SPA merges each echo by tool op into `queryKeys.trip` and
-must **not** `invalidateQueries(trip)` after stream settle or agent-events
-polls — that path was wiping freshly added stops in production. Avatars resolve members by
+create — [../frontend/data-caching.md](../frontend/data-caching.md)). Explicit
+`@agent` / stream turns use the same rule on settle: write-echo the live
+`UIMessage`s (same ids the server persists) into `queryKeys.agentMessages`,
+then clear the `useChat` buffer — **never** `invalidateQueries(agentMessages)`
+on settle, because Workers may still be in `onFinish` after the client SSE
+closes. Approved write tools return `{ ok, summary, trip }` (in-memory
+`TripDto`, not a re-`SELECT`); the SPA merges each echo by tool op into
+`queryKeys.trip` and must **not** `invalidateQueries(trip)` after stream
+settle or agent-events polls — that path was wiping freshly added stops in
+production. Avatars resolve members by
 `actorUserId` (not display name) so duplicate names stay distinct. The
 collapsed state persists via
 `PUT /api/users/preferences/agent-panel` (response is the written preference
@@ -293,4 +298,6 @@ fresh rows after writes. Deferred ambient replies **and** streaming chat
 `onFinish` persistence are tracked on the container and finish before
 `pool.end()` (`disposeAfterDeferred`). Without holding the pool for the SSE
 lifetime, `appendMessage` fails with `Cannot use a pool after calling end on
-the pool` and the SPA clears the live buffer — the reply appears to vanish.
+the pool`. The SPA must still write-echo on stream settle (above): client SSE
+can finish before `onFinish`, so an immediate history refetch would miss the
+assistant row even when the pool stay-open fix succeeds.

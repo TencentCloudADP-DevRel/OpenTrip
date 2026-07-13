@@ -40,6 +40,7 @@ TanStack Query documents this as
 | Rename trip | `PATCH` → full `Trip` | `setQueryData` trip + merge `toTripSummary` into `queryKeys.trips` |
 | Agent write tools | Tool `execute` returns `{ ok, summary, trip }` | Live stream: merge each echo by op (`mergeTripToolEcho`) into `queryKeys.trip` — **never** replace the whole trip with a later half-stale echo, and **never** `invalidateQueries(trip)` after stream settle |
 | Agent message | `POST …/agent/messages` echoes `message` | `setQueryData` on agent history (no immediate list GET) |
+| Agent `@agent` stream settle | Server persists in `onFinish` (may lag SSE close) | Write-echo live `UIMessage`s into `queryKeys.agentMessages` by id, then clear `useChat` — **never** `invalidateQueries(agentMessages)` on settle |
 | Agent panel preference | PATCH preferences returns written row | `setQueryData(queryKeys.preferences, data)` — must not re-read cached SELECT |
 
 Helpers:
@@ -57,6 +58,7 @@ Helpers:
 | Joined trip missing from home after invite accept | Accept response omitted the Trip echo or the SPA did not merge it into detail/list caches |
 | Agent panel snaps shut after open | Preference PATCH response re-`SELECT`ed a cached `collapsed: true` |
 | New agent bubble missing until poll/refresh | History list GET after insert hit stale cache |
+| Agent stream reply appears then vanishes on settle | `invalidateQueries(agentMessages)` + clear live before Workers `onFinish` — write-echo live ids instead |
 | Parallel `updateDay` / `insertStop`: Day 1 city or earlier stops “roll back” (prod only) | Same-turn `findById` between patches (stale Hyperdrive SELECT) and/or SPA last-wins full trip echo — see agent write-tool echo below |
 
 ## When invalidate is still OK
