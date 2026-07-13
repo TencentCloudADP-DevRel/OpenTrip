@@ -59,6 +59,7 @@ export {
   type AgentFilePart,
   type AgentMessage,
   type AgentMessagePart,
+  type AgentMessageRole,
   type AgentMessageSource,
   type AgentSuggestion,
   type AgentSuggestionStatus,
