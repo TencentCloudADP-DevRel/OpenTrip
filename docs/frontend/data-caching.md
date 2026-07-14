@@ -50,6 +50,13 @@ Helpers:
 
 ## Symptoms of getting this wrong
 
+Before attributing a stale GET to Hyperdrive, inspect the HTTP response. A
+`cf-cache-status: HIT` on authenticated `/api/*` traffic means the request did
+not execute the Worker at all; follow the
+[Workers Caching incident runbook](../operations/incidents/2026-07-14-workers-caching.md).
+Hyperdrive staleness occurs inside an executed Worker and therefore has a new
+application `x-request-id` / completion log for the request.
+
 | Symptom | Likely cause |
 | --- | --- |
 | New trip missing from home grid for ~30–60s after wizard success (prod only) | `invalidateQueries(trips)` → stale `GET /api/trips` |

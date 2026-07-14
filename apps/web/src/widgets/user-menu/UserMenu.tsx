@@ -9,6 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { signOut, useSession } from "@/shared/auth";
 import { useSettings, type SettingsPane } from "@/features/settings";
 import { Avatar } from "@/shared/ui/avatar";
@@ -26,6 +27,7 @@ export interface UserMenuProps {
  * info, settings panes, and sign out. Mirrors Kalmia's UserMenu pattern. */
 export function UserMenu({ compact, direction = "up" }: UserMenuProps) {
   const { t } = useTranslation("common");
+  const queryClient = useQueryClient();
   const { data: session } = useSession();
   const { openPane } = useSettings();
   const [open, setOpen] = useState(false);
@@ -61,6 +63,16 @@ export function UserMenu({ compact, direction = "up" }: UserMenuProps) {
   const openSettings = (pane: SettingsPane) => {
     setOpen(false);
     openPane(pane);
+  };
+
+  const handleSignOut = async () => {
+    setOpen(false);
+    const result = await signOut();
+    if (!result.error) {
+      // Query keys are deliberately not user-scoped. Remove every authenticated
+      // server-state entry before a different identity can mount the app.
+      queryClient.clear();
+    }
   };
 
   const user = session?.user;
@@ -137,8 +149,7 @@ export function UserMenu({ compact, direction = "up" }: UserMenuProps) {
                 type="button"
                 role="menuitem"
                 onClick={() => {
-                  setOpen(false);
-                  void signOut();
+                  void handleSignOut();
                 }}
                 className={cn(
                   "flex min-h-10 w-full items-center gap-2.5 rounded-lg pl-1.5 pr-2 py-2 text-left text-sm font-medium text-foreground hover:bg-accent",

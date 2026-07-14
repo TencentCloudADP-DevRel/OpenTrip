@@ -97,3 +97,5 @@ Better Auth and S3 credential values are set with `wrangler secret`.
   [docker.md](docker.md)).
 - Agent/API trace correlation, Sentry queries, structured-log fields, and
   symptom runbooks: [observability.md](observability.md).
+- Production incident notes and regression checks:
+  [incidents/2026-07-14-workers-caching.md](incidents/2026-07-14-workers-caching.md).

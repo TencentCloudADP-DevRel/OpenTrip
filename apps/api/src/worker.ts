@@ -187,6 +187,7 @@ function emergencyCorsResponse(
     .filter(Boolean);
   const headers = new Headers({
     "content-type": "application/json",
+    "cache-control": "private, no-store",
     "access-control-allow-credentials": "true",
     vary: "Origin",
   });

@@ -177,6 +177,31 @@ observability, custom domain `api.opentrip.im`, and **fallback** non-secret
 vars. Production values come from GitHub Actions variables via
 `deploy-api.mjs`.
 
+### API cache boundary
+
+The default API Worker entrypoint must keep Workers Caching disabled:
+
+```jsonc
+"cache": { "enabled": false }
+```
+
+Workers Caching is an execution-level response cache in front of the Worker;
+it is unrelated to the Cache API exposed as `caches.default`. Enabling it on
+the authenticated gateway can cache any `200` response without an explicit
+`Cache-Control` header for Cloudflare's default TTL. Its cache key does not
+partition browser sessions by Cookie, so `/api/auth/get-session`, `/api/trips`,
+and every other user-dependent GET must never pass through it.
+
+Hono also applies `Cache-Control: private, no-store` to responses that do not
+declare a policy. This is defense in depth for browsers and proxies, not a
+reason to re-enable entrypoint caching. Intentionally public immutable uploads
+and private short-lived previews keep their explicit route headers.
+
+The street-view provider cache remains enabled through explicit
+`caches.default.match` / `put` calls using internal synthetic keys. Adding a
+Cache API adapter does **not** require changing Wrangler's `cache.enabled`.
+See [the 2026-07-14 incident note](incidents/2026-07-14-workers-caching.md).
+
 Workers Logs are retained at 100%, platform traces at 10%, and Sentry samples
 trip-agent routes at 100%. Configure the Sentry Actions values and use the
 shared request/turn identifiers described in [observability.md](observability.md).

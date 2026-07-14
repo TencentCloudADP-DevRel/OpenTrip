@@ -14,8 +14,11 @@
   // Do not commit a production account_id here.
   "workers_dev": true,
   "upload_source_maps": true,
+  // This is an authenticated API gateway. Workers Caching runs before the
+  // Worker and must never cache cookie/session-dependent responses. Explicit
+  // caches.default usage (for example street-view provider data) is unaffected.
   "cache": {
-    "enabled": true
+    "enabled": false
   },
   "observability": {
     "enabled": true,

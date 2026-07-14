@@ -296,6 +296,13 @@ export function createApp(
     try {
       await next();
     } finally {
+      // Dynamic API responses are private by default. This is a second safety
+      // boundary behind the disabled Worker entrypoint cache and also protects
+      // browsers and intermediary proxies. Routes serving intentionally public
+      // immutable bytes set their own Cache-Control header explicitly.
+      if (!c.res.headers.has("Cache-Control")) {
+        c.header("Cache-Control", "private, no-store");
+      }
       c.header("x-request-id", requestId);
       logger.info("http.request.completed", {
         runtime: options.runtime,
