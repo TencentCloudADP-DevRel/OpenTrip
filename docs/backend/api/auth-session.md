@@ -22,12 +22,11 @@ server config, captcha, Google/WeChat OAuth, and `defaultCurrency`.
    - Prefer the official Better Auth client for the platform when available so
      sign-in, sign-up, session refresh, and sign-out stay compatible.
 
-The Taro WeChat client uses the already-enabled Better Auth `bearer()` plugin
-instead of a cookie jar: after email or native WeChat sign-in it captures the
-`set-auth-token` response header, stores the token with Taro storage, and sends
-`Authorization: Bearer <token>` on Better Auth and business requests. The plugin
-maps that credential back to the same server session, so application use cases
-and domain authorization do not have a client-specific path. See
+The native WeChat shell uses the Better Auth `bearer()` plugin only during
+bootstrap. It exchanges `wx.login()` for a session, mints a one-time WebView
+code, and discards the bearer. The embedded PWA exchanges the code for the same
+HttpOnly cookie used by ordinary browsers, so business requests and domain
+authorization have no client-specific path. See
 [../../frontend/miniapp.md](../../frontend/miniapp.md).
 
 ### Client-relevant Better Auth surfaces
@@ -41,7 +40,7 @@ Not every Better Auth plugin path is listed here. Clients need at least:
 | Resend email OTP | `POST …/email-otp/send-verification-otp` | Captcha when enabled |
 | Email sign-in | `POST …/sign-in/email` | Unverified → `EMAIL_NOT_VERIFIED` + OTP resent |
 | Social sign-in | `POST …/sign-in/social` | Google or WeChat web QR when configured |
-| Mini Program WeChat sign-in | `POST …/wechat-mini-program/sign-in` | Body `{ code }` from `Taro.login()`; returns the normal Better Auth session token |
+| Mini Program WeChat sign-in | `POST …/wechat-mini-program/sign-in` | Body `{ code }` from `wx.login()`; returns the normal Better Auth session token |
 | Session | `GET …/get-session` | Current user + session |
 | Sign-out | `POST …/sign-out` | Clears session |
 | Update user | Better Auth `updateUser` | e.g. `name`, `defaultCurrency` |
@@ -57,6 +56,17 @@ Not every Better Auth plugin path is listed here. Clients need at least:
 The callback code is hashed at rest, valid for three minutes, and consumed on
 first use. Native business requests send the returned session token as a Bearer
 credential.
+
+### Mini Program WebView bridge
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| POST | `/api/mobile-auth/webview/mint` | Authenticate the shell bearer and return `{ data: { code } }` |
+| POST | `/api/mobile-auth/webview/exchange` | Consume `{ code }` and forward the Better Auth HttpOnly session cookie |
+
+The bridge reuses the one-time-token guarantees above. Both endpoints are
+`private, no-store`; the bearer is never accepted in a URL and the code is
+removed from the PWA fragment before exchange.
 
 Cloudflare Turnstile (when `CAPTCHA_PROVIDER=cloudflare-turnstile`) intercepts
 protected auth POSTs via header `x-captcha-response`. Other CAPTCHA providers

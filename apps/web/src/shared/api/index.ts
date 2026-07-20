@@ -1,4 +1,5 @@
 export { apiFetch, ApiError } from "./client";
+export { exchangeMiniappWebviewCode } from "./mobile-auth";
 export {
   searchPlaces,
   reversePlace,

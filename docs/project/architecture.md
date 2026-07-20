@@ -5,11 +5,11 @@
 ```mermaid
 flowchart TD
   browser[Browser] --> web[apps/web React SPA]
-  wechat[WeChat] --> miniapp[apps/miniapp Taro client]
+  wechat[WeChat] --> miniapp[apps/miniapp native shell]
+  miniapp -->|WebView| web
   web -->|"/api/*"| api[apps/api Hono]
   web -->|"/api/auth/*"| api
-  miniapp -->|"Bearer /api/*"| api
-  miniapp -->|"/api/auth/*"| api
+  miniapp -->|"wx.login + bearer bridge"| api
   api --> app[Application use cases]
   app --> domain[Domain aggregates]
   app --> ports[Repository ports]
@@ -32,9 +32,9 @@ flowchart TD
 
 - **apps/web** — React SPA (FSD). Renders Trips and the Planner, talks to the
   API over `fetch`, and delegates auth to the Better Auth client.
-- **apps/miniapp** — Taro React WeChat Mini Program (FSD). Uses Taro components
-  and `Taro.request`, persists the Better Auth bearer token, and implements the
-  mobile trips/list/detail interaction without importing browser UI internals.
+- **apps/miniapp** — dependency-free native WeChat shell. It exchanges
+  `wx.login` for a short-lived bearer, immediately mints a single-use WebView
+  code, and hosts the responsive PWA without persisting the bearer.
 - **apps/api** — Hono app (DDD + Hexagonal). `interfaces/http` routes call
   `application` use cases, which operate on `domain` aggregates through
   repository ports implemented in `infrastructure`.

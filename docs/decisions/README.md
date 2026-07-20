@@ -24,7 +24,9 @@ Each ADR uses: **Context**, **Decision**, **Consequences**, **Status**
   echo mutation DTOs into React Query instead of immediate list refetch under
   Hyperdrive.
 - [0007-separate-taro-miniapp-client.md](0007-separate-taro-miniapp-client.md) —
-  keep the Taro WeChat client separate from the DOM-oriented web application
-  while sharing the DDD backend HTTP contract.
+  superseded historical decision to keep a separate Taro client.
 - [0008-native-r2-worker-binding.md](0008-native-r2-worker-binding.md) — use a
   native same-account R2 binding in Workers instead of S3 credential secrets.
+- [0009-mini-program-pwa-webview-shell.md](0009-mini-program-pwa-webview-shell.md)
+  — replace the duplicated Taro client with a native login shell hosting the
+  responsive PWA through a secure one-time-code bridge.

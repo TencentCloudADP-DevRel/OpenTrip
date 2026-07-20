@@ -12,6 +12,7 @@ import {
 import { MobileOnboarding } from "@/features/mobile-onboarding";
 import { SettingsProvider } from "@/features/settings";
 import { subscribeToThemeChanges } from "@/features/toggle-theme";
+import { EmbeddedEnvironmentProvider } from "../embedded-environment";
 import { PwaLifecycle } from "./PwaLifecycle";
 
 const queryClient = new QueryClient({
@@ -20,35 +21,43 @@ const queryClient = new QueryClient({
     },
 });
 
-export function AppProviders({ children }: { children: ReactNode }) {
+export function AppProviders({
+    embedded,
+    children,
+}: {
+    embedded: boolean;
+    children: ReactNode;
+}) {
     useEffect(() => {
-        installSystemNotificationBridge();
+        if (!embedded) installSystemNotificationBridge();
         return subscribeToThemeChanges();
-    }, []);
+    }, [embedded]);
 
     return (
-        <I18nextProvider i18n={i18n}>
-            <QueryClientProvider client={queryClient}>
-                <TooltipProvider delay={400}>
-                    <ToastProvider>
-                        <PwaLifecycle />
-                        <MobileOnboarding />
-                        <AnchoredToastProvider>
-                            <SettingsProvider>
-                                <Suspense
-                                    fallback={
-                                        <div className="flex min-h-dvh items-center justify-center">
-                                            <Spinner className="size-6" />
-                                        </div>
-                                    }
-                                >
-                                    {children}
-                                </Suspense>
-                            </SettingsProvider>
-                        </AnchoredToastProvider>
-                    </ToastProvider>
-                </TooltipProvider>
-            </QueryClientProvider>
-        </I18nextProvider>
+        <EmbeddedEnvironmentProvider embedded={embedded}>
+            <I18nextProvider i18n={i18n}>
+                <QueryClientProvider client={queryClient}>
+                    <TooltipProvider delay={400}>
+                        <ToastProvider>
+                            {!embedded ? <PwaLifecycle /> : null}
+                            {!embedded ? <MobileOnboarding /> : null}
+                            <AnchoredToastProvider>
+                                <SettingsProvider>
+                                    <Suspense
+                                        fallback={
+                                            <div className="flex min-h-dvh items-center justify-center">
+                                                <Spinner className="size-6" />
+                                            </div>
+                                        }
+                                    >
+                                        {children}
+                                    </Suspense>
+                                </SettingsProvider>
+                            </AnchoredToastProvider>
+                        </ToastProvider>
+                    </TooltipProvider>
+                </QueryClientProvider>
+            </I18nextProvider>
+        </EmbeddedEnvironmentProvider>
     );
 }

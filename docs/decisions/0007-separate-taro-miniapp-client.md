@@ -32,4 +32,4 @@ only after actual framework-independent reuse emerges.
 
 ## Status
 
-Accepted.
+Superseded by [0009](0009-mini-program-pwa-webview-shell.md).

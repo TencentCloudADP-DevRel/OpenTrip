@@ -226,17 +226,15 @@ Google and uses Better Auth's built-in `wechat` social provider.
 Mini Programs use a separate protocol and credential pair:
 `WECHAT_MINI_PROGRAM_APP_ID` + `WECHAT_MINI_PROGRAM_APP_SECRET`.
 `POST /api/auth/wechat-mini-program/sign-in` accepts the short-lived code from
-`Taro.login()`. The infrastructure adapter exchanges it with WeChat's
+`wx.login()`. The infrastructure adapter exchanges it with WeChat's
 `jscode2session` endpoint, discards `session_key`, and creates the normal Better
-Auth session. The Mini Program AppSecret is never shipped to Taro.
+Auth session. The Mini Program AppSecret is never shipped to the shell.
 
-The Mini Program collects the user-confirmed nickname and avatar with WeChat's
-native `input type="nickname"` and `button open-type="chooseAvatar"` controls
-before requesting that session. After identity exchange, it calls Better
-Auth's native `POST /api/auth/update-user` for the nickname and
-`POST /api/users/avatar` for the temporary avatar file. The bearer token is
-persisted only after both profile writes succeed, so a failed upload cannot
-bypass profile completion on the next launch.
+The shell uses that session only to mint a hashed, single-use, three-minute
+WebView code at `POST /api/mobile-auth/webview/mint`. The PWA consumes it at
+`POST /api/mobile-auth/webview/exchange`, receives the HttpOnly browser cookie,
+and handles profile edits and avatar upload through the normal web surface. The
+bearer is neither persisted nor placed in a URL.
 
 Bind the Website Application and Mini Program to the same WeChat Open Platform
 account when cross-surface account continuity is required. The adapter prefers

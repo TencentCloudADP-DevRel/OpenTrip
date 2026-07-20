@@ -1,7 +1,7 @@
 {
-  "miniprogramRoot": "dist/",
+  "miniprogramRoot": "miniprogram/",
   "projectname": "OpenTrip",
-  "description": "OpenTrip Taro WeChat Mini Program",
+  "description": "OpenTrip PWA WebView shell",
   "setting": {
     "urlCheck": true,
     "es6": true,

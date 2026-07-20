@@ -20,8 +20,8 @@ Travel Planner SaaS — plan trips together, split everything.
 - [frontend/i18n.md](frontend/i18n.md)
 - [frontend/data-caching.md](frontend/data-caching.md) — React Query write-echo
   (Hyperdrive read-after-write)
-- [frontend/miniapp.md](frontend/miniapp.md) — Taro WeChat Mini Program client,
-  bearer auth, FSD boundaries, and local development.
+- [frontend/miniapp.md](frontend/miniapp.md) — native WeChat WebView shell,
+  one-time-code auth bridge, and embedded PWA behavior.
 
 ### Client API (web, mobile, other apps)
 
@@ -68,7 +68,7 @@ Start here for multi-client development:
 ```
 apps/
   web/   React + Vite frontend (FSD)
-  miniapp/ Taro + React WeChat Mini Program frontend (FSD)
+  miniapp/ dependency-free native WeChat PWA shell
   api/   Hono backend (DDD + Hexagonal)
 packages/
   agent-ui-catalog/  shared json-render catalog and spec safety boundary

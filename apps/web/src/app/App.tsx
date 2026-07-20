@@ -1,5 +1,7 @@
 import { AppProviders } from "./providers";
 import { RouterProvider, useRouter, matchTripId, matchInviteToken } from "./router";
+import { detectMiniappContainer } from "./embedded-environment";
+import { MiniappBootstrap } from "./MiniappBootstrap";
 import { useSession } from "@/shared/auth";
 import { Spinner } from "@/shared/ui/spinner";
 import { AuthPage } from "@/pages/auth";
@@ -46,10 +48,13 @@ function Gate() {
 }
 
 export function App() {
+  const embedded = detectMiniappContainer();
+  const isMiniappBootstrap = window.location.pathname === "/miniapp";
+
   return (
-    <AppProviders>
+    <AppProviders embedded={embedded}>
       <RouterProvider>
-        <Gate />
+        {isMiniappBootstrap ? <MiniappBootstrap /> : <Gate />}
       </RouterProvider>
     </AppProviders>
   );
