@@ -1,8 +1,9 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppProviders } from "./providers";
 import { RouterProvider, useRouter, matchTripId, matchInviteToken } from "./router";
 import { detectMiniappContainer } from "./embedded-environment";
 import { MiniappBootstrap } from "./MiniappBootstrap";
+import { resolveInitialSession } from "./auth-session-state";
 import { useSession } from "@/shared/auth";
 import { Spinner } from "@/shared/ui/spinner";
 import { AuthPage } from "@/pages/auth";
@@ -18,15 +19,17 @@ function Routes() {
   return <TripsPage />;
 }
 
-function Gate() {
+function Gate({
+  isAuthenticated,
+  initialSessionResolved,
+}: {
+  isAuthenticated: boolean;
+  initialSessionResolved: boolean;
+}) {
   const { path } = useRouter();
   const inviteToken = matchInviteToken(path);
-  // Better Auth sets isPending during logged-out refetches (e.g. after
-  // sign-up). Only block the tree on the initial resolve so AuthForm keeps
-  // its OTP step instead of remounting back to credentials.
-  const { data: session, isPending, isRefetching } = useSession();
 
-  if (isPending && !isRefetching) {
+  if (!initialSessionResolved) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
         <Spinner className="size-6" />
@@ -36,9 +39,11 @@ function Gate() {
 
   // The invite route handles both authenticated and unauthenticated visitors,
   // preserving `/invite/:token` through sign-in so the accept step can continue.
-  if (inviteToken) return <InvitePage token={inviteToken} />;
+  if (inviteToken) {
+    return <InvitePage token={inviteToken} isAuthenticated={isAuthenticated} />;
+  }
 
-  if (!session) return <AuthPage />;
+  if (!isAuthenticated) return <AuthPage />;
 
   return (
     <>
@@ -50,7 +55,25 @@ function Gate() {
 
 function AppContent({ startsInBootstrap }: { startsInBootstrap: boolean }) {
   const { replace } = useRouter();
+  const {
+    data: session,
+    isPending,
+    isRefetching,
+    refetch,
+  } = useSession();
+  const [initialSessionResolved, setInitialSessionResolved] = useState(false);
   const [isBootstrapping, setIsBootstrapping] = useState(startsInBootstrap);
+  const isAuthenticated = Boolean(session);
+  const sessionBusy = isPending || isRefetching;
+
+  useEffect(() => {
+    // Latch after the first definitive result. Later logged-out refetches must
+    // not remount AuthForm and erase an in-progress OTP or two-factor step.
+    setInitialSessionResolved((current) =>
+      resolveInitialSession(current, { isAuthenticated, sessionBusy }),
+    );
+  }, [isAuthenticated, sessionBusy]);
+
   const completeBootstrap = useCallback(
     (path: string) => {
       // Internal redirect only: the current WebView must render the target
@@ -62,10 +85,23 @@ function AppContent({ startsInBootstrap }: { startsInBootstrap: boolean }) {
   );
 
   if (isBootstrapping) {
-    return <MiniappBootstrap onComplete={completeBootstrap} />;
+    return (
+      <MiniappBootstrap
+        isAuthenticated={isAuthenticated}
+        sessionBusy={sessionBusy}
+        initialSessionResolved={initialSessionResolved}
+        refreshSession={refetch}
+        onComplete={completeBootstrap}
+      />
+    );
   }
 
-  return <Gate />;
+  return (
+    <Gate
+      isAuthenticated={isAuthenticated}
+      initialSessionResolved={initialSessionResolved}
+    />
+  );
 }
 
 export function App() {

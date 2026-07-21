@@ -395,6 +395,10 @@ The frontend uses `better-auth/react` (`apps/web/src/shared/auth`) pointing at
 `inferAdditionalFields` so `session.user.defaultCurrency` and
 `session.user.twoFactorEnabled` are typed. It exposes `signIn`, `signUp`,
 `signOut`, `useSession`, `authClient.emailOtp.*`, and `authClient.twoFactor.*`.
+`AppContent` owns the single reactive session subscription used by the auth
+gate, invite route, and Mini Program bootstrap. The WebView bridge refetches
+that subscription after exchanging its one-time code; it does not perform an
+independent `getSession` check that could leave the gate's session atom empty.
 
 `AuthForm` is a multi-step email flow: credentials → email OTP (`OTPField`) or
 2FA challenge (TOTP / backup code), plus forgot-password (email → OTP + new

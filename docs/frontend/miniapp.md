@@ -52,11 +52,13 @@ query via `wx.setNavigationBarTitle` before the WebView finishes loading.
    at `POST /api/mobile-auth/webview/mint`. If the bearer expired, the shell
    retries once with a fresh `wx.login`.
 4. The page opens `https://<web-origin>/miniapp#code=…&path=…`.
-5. The PWA removes the fragment, then prefers an existing session cookie; only
-   when none exists does it exchange the code at
+5. The PWA removes the fragment and resolves Better Auth through the single
+   reactive `useSession` owner mounted by `AppContent`. Only when that initial
+   result is signed out does it exchange the code at
    `POST /api/mobile-auth/webview/exchange` for the HttpOnly Better Auth
-   cookie. This keeps multi-page stacks working regardless of whether the
-   WebView shares cookies across native pages.
+   cookie, then refetches that same session owner. This keeps multi-page stacks
+   working regardless of whether the WebView shares cookies across native
+   pages, without a second independent `getSession` request.
 6. The PWA replaces its location with the target path (an internal redirect —
    never a native stack push) and renders in embedded mode.
 
@@ -136,6 +138,12 @@ source directly from `apps/miniapp/miniprogram`.
 `/miniapp` is a bootstrap route handled before the regular auth gate. Embedded
 mode:
 
+- keeps the auth gate blocked until the initial session result or bridge
+  refetch is definitive, so an empty session atom can never flash the sign-in
+  surface; after that first result, background refetches leave an in-progress
+  OTP or two-factor form mounted;
+- shows only a neutral, accessible loading spinner during bridge work rather
+  than presenting repeat page loads as a new login;
 - suppresses browser-only install/update prompts, mobile onboarding, and
   system-notification setup;
 - preloads the JSSDK bridge and routes page-level `navigate()` calls through
@@ -153,6 +161,8 @@ responses are `Cache-Control: private, no-store`.
 Test in WeChat DevTools and real iOS/Android WeChat clients:
 
 - first and repeat login;
+- forward native-page navigation never renders the sign-in surface between the
+  bridge spinner and the authenticated target route;
 - expired and reused bridge codes;
 - cookie persistence across native pages (home → trip → back) and logout;
 - native back button and swipe-back from the trip page;

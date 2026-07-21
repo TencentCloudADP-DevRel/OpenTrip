@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AuthForm } from "@/features/auth";
-import { useSession } from "@/shared/auth";
 import { useRouter } from "@/app/router";
 import {
   acceptTripInvite,
@@ -32,16 +31,14 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function InvitePage({ token }: { token: string }) {
+export function InvitePage({
+  token,
+  isAuthenticated,
+}: {
+  token: string;
+  isAuthenticated: boolean;
+}) {
   const { t } = useTranslation("invite");
-  const {
-    data: session,
-    isPending: sessionPending,
-    isRefetching: sessionRefetching,
-  } = useSession();
-  // Same as Gate: ignore logged-out session refetches so AuthForm OTP state
-  // survives sign-up on the invite route.
-  const sessionBooting = sessionPending && !sessionRefetching;
 
   const preview = useQuery<InvitePreview, ApiError>({
     queryKey: ["invite", token],
@@ -49,7 +46,7 @@ export function InvitePage({ token }: { token: string }) {
     retry: false,
   });
 
-  if (sessionBooting || preview.isPending) {
+  if (preview.isPending) {
     return (
       <Shell>
         <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -73,7 +70,7 @@ export function InvitePage({ token }: { token: string }) {
 
   const data = preview.data;
 
-  if (!session) {
+  if (!isAuthenticated) {
     return (
       <Shell>
         <Card className="wf-enter p-6">
