@@ -95,6 +95,13 @@ export function matchInviteToken(path: string): string | null {
   return m ? decodeURIComponent(m[1]!) : null;
 }
 
+/** Whether a path maps to a real route. Unknown paths render the 404 surface
+ *  instead of silently falling back to the trips home. */
+export function isKnownPath(path: string): boolean {
+  if (path === "/" || path === "/signin" || path === "/miniapp") return true;
+  return matchTripId(path) !== null || matchInviteToken(path) !== null;
+}
+
 /**
  * Routes page-level transitions through the WeChat native page stack so the
  * Mini Program gets real native navigation (nav bar, back button, swipe

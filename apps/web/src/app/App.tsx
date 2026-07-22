@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppProviders } from "./providers";
-import { RouterProvider, useRouter, matchTripId, matchInviteToken } from "./router";
+import { RouterProvider, useRouter, matchTripId, matchInviteToken, isKnownPath } from "./router";
 import { detectMiniappContainer, useIsMiniappEmbedded } from "./embedded-environment";
 import { MiniappBootstrap } from "./MiniappBootstrap";
+import { AppErrorBoundary } from "./AppErrorBoundary";
 import { resolveInitialSession } from "./auth-session-state";
 import { useSession } from "@/shared/auth";
 import { Spinner } from "@/shared/ui/spinner";
@@ -11,6 +12,7 @@ import { LandingPage } from "@/pages/landing";
 import { InvitePage } from "@/pages/invite";
 import { TripsPage } from "@/pages/trips";
 import { TravelPlannerPage } from "@/pages/travel-planner";
+import { ErrorPage } from "@/pages/error";
 import { SettingsDialog } from "@/widgets/settings-dialog";
 
 function Routes() {
@@ -44,6 +46,10 @@ function Gate({
   if (inviteToken) {
     return <InvitePage token={inviteToken} isAuthenticated={isAuthenticated} />;
   }
+
+  // Unrecognized paths render the 404 surface for everyone rather than silently
+  // falling back to the trips home.
+  if (!isKnownPath(path)) return <ErrorPage variant="404" />;
 
   if (!isAuthenticated) {
     // Web visitors land on the marketing page at the root; the auth form lives
@@ -119,7 +125,9 @@ export function App() {
   return (
     <AppProviders embedded={embedded}>
       <RouterProvider>
-        <AppContent startsInBootstrap={window.location.pathname === "/miniapp"} />
+        <AppErrorBoundary>
+          <AppContent startsInBootstrap={window.location.pathname === "/miniapp"} />
+        </AppErrorBoundary>
       </RouterProvider>
     </AppProviders>
   );

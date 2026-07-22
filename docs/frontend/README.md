@@ -26,6 +26,19 @@ sessions skip the landing entirely. The gate lives in `app/App.tsx`. Landing
 copy is centralized in the `landing` i18n namespace (EN + 中文) and its
 screenshots reuse the README captures under `pages/landing/assets`.
 
+## Error pages
+
+`pages/error` is one variant-driven surface for every error state — `404`,
+`500`, `403`, `503` and `offline` — so the whole family shares layout, motion
+and actions. `ErrorPage` takes a `variant`; copy lives in the `error` i18n
+namespace (EN + 中文) and imagery is pulled at random from a per-variant pool of
+Unsplash CDN photos (alt text only — nothing overlaid on the image). Every
+action maps to a real destination (`home`, `signIn`, `retry`) — no dead-end
+buttons. The gate in `app/App.tsx` renders the `404` surface for unrecognized
+paths (`isKnownPath` in `app/router.tsx`), and `app/AppErrorBoundary.tsx`
+catches render-time crashes and shows the `500` surface with a working
+"Try again".
+
 ## Path aliases
 
 `@/*` maps to `apps/web/src/*` (see `apps/web/tsconfig.json` and
